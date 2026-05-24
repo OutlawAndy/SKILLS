@@ -1,6 +1,7 @@
 require_relative "frontmatter"
 require_relative "manifest"
 require_relative "targets/claude"
+require_relative "targets/copilot"
 
 module OutlawSkills
   # Known build targets — recognized values for the `targets:` frontmatter
@@ -19,9 +20,9 @@ module OutlawSkills
 
       builder = Builder.new(root: root)
       targets = case arg
-                when "all"     then ["claude"] # copilot added in U6
+                when "all"     then TARGETS
                 when "claude"  then ["claude"]
-                when "copilot" then abort("copilot target not yet implemented (plan unit U6)")
+                when "copilot" then ["copilot"]
                 end
 
       targets.each { |t| builder.build_target(t) }
@@ -83,7 +84,8 @@ module OutlawSkills
 
     def build_target(name)
       case name
-      when "claude" then Targets::Claude.new(self).build
+      when "claude"  then Targets::Claude.new(self).build
+      when "copilot" then Targets::Copilot.new(self).build
       else raise BuildError, "no target implementation for #{name}"
       end
     end
