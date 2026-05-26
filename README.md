@@ -15,7 +15,7 @@ bin/install --target=copilot  # symlinks the Copilot dist into VS Code
 Wire the built distributions into your tools:
 
 - **Claude Code:** in any session, run `/plugin marketplace add /absolute/path/to/outlaw-skills` then `/plugin install outlaw-skills@outlaw-skills`, and restart.
-- **GitHub Copilot (VS Code):** `bin/install --target=copilot` symlinks `*.prompt.md` into `$HOME/Library/Application Support/Code/User/prompts/` and `*.agent.md` into `$HOME/.copilot/agents/` (re-run after `bin/build` is unnecessary — symlinks flow through). Reload the VS Code window afterward.
+- **GitHub Copilot (VS Code):** `bin/install --target=copilot` symlinks each skill directory into `$HOME/.copilot/skills/` and `*.agent.md` into `$HOME/.copilot/agents/`. Copilot reads the open Agent Skills (`SKILL.md`) format natively, so skills are copied verbatim — no conversion — and auto-activate by description (re-run after `bin/build` is unnecessary — symlinks flow through). Reload the VS Code window afterward.
 
 Full install details, target filtering, and the verification checklist live in [AGENTS.md](AGENTS.md).
 

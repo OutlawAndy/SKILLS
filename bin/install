@@ -17,11 +17,13 @@
 # existing entry and skips.
 #
 # The Copilot install symlinks the built dist (run bin/build first) into the
-# VS Code user profile: dist/copilot/.github/prompts/*.prompt.md ->
-# ~/Library/Application Support/Code/User/prompts/, and
+# personal Copilot directory: dist/copilot/.github/skills/* ->
+# ~/.copilot/skills/ (Copilot reads SKILL.md natively), and
 # dist/copilot/.github/agents/*.agent.md -> ~/.copilot/agents/. Symlinks mean
 # later `bin/build copilot` runs flow through without reinstalling. It is
 # idempotent and only ever removes symlinks that point back into this repo.
+# Uninstall also sweeps the legacy ~/Library/.../Code/User/prompts location for
+# stale *.prompt.md symlinks left by older versions that shipped prompt files.
 
 require "json"
 require "fileutils"
@@ -37,8 +39,11 @@ HOOK_MARKER = HOOK_BASENAME # used to detect a previous install
 
 # Copilot install targets (current VS Code spec, macOS).
 COPILOT_DIST = File.join(REPO_ROOT, "dist/copilot/.github")
-VSCODE_PROMPTS_DIR = File.expand_path("~/Library/Application Support/Code/User/prompts")
+COPILOT_SKILLS_DIR = File.expand_path("~/.copilot/skills")
 COPILOT_AGENTS_DIR = File.expand_path("~/.copilot/agents")
+# Legacy location of *.prompt.md symlinks from versions before Copilot gained
+# native SKILL.md support. Swept on uninstall so upgrades don't orphan links.
+VSCODE_PROMPTS_DIR = File.expand_path("~/Library/Application Support/Code/User/prompts")
 COPILOT_LINK_ROOT = File.join(REPO_ROOT, "dist/copilot") # symlinks under here are "ours"
 
 class Installer
@@ -70,7 +75,8 @@ class Installer
       abort "Copilot dist not found at #{COPILOT_DIST}.\nRun `bin/build` (or `bin/build copilot`) first, then re-run this install."
     end
 
-    plan_symlinks(File.join(COPILOT_DIST, "prompts"), "*.prompt.md", VSCODE_PROMPTS_DIR)
+    # `*` matches the skill directories; plan_symlinks/apply! are type-agnostic.
+    plan_symlinks(File.join(COPILOT_DIST, "skills"), "*", COPILOT_SKILLS_DIR)
     plan_symlinks(File.join(COPILOT_DIST, "agents"), "*.agent.md", COPILOT_AGENTS_DIR)
 
     apply!
@@ -79,8 +85,10 @@ class Installer
   end
 
   def uninstall_copilot
-    plan_unlinks(VSCODE_PROMPTS_DIR, "*.prompt.md")
+    plan_unlinks(COPILOT_SKILLS_DIR, "*")
     plan_unlinks(COPILOT_AGENTS_DIR, "*.agent.md")
+    # One-time migration: clean up *.prompt.md symlinks left by older versions.
+    plan_unlinks(VSCODE_PROMPTS_DIR, "*.prompt.md")
 
     apply!
     report
@@ -170,7 +178,10 @@ class Installer
         _, src, dst = change
         do_it("symlink #{dst} -> #{src}") do
           FileUtils.mkdir_p(File.dirname(dst))
-          FileUtils.ln_sf(src, dst)
+          # Remove a stale link first: ln_sf nests a directory symlink *inside*
+          # dst when dst already exists (producing skills/<name>/<name>).
+          FileUtils.rm_f(dst) if File.symlink?(dst)
+          FileUtils.ln_s(src, dst)
         end
       when :unlink
         _, path = change

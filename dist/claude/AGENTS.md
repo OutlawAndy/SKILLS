@@ -14,7 +14,7 @@ outlaw-skills/
   lib/outlaw_skills/   # build logic
   dist/                # generated plugin distributions (checked in)
     claude/            # Claude Code plugin layout
-    copilot/           # Copilot plugin layout (see docs/research/copilot-plugin-format.md)
+    copilot/           # Copilot layout: .github/skills/ (native SKILL.md dirs), agents/, copilot-instructions.md
   VERSION              # single source of version truth (semver, currently 0.1.0)
   LICENSE              # MIT
   AGENTS.md            # this file
@@ -51,20 +51,22 @@ To update after rebuilding: `bin/build claude` regenerates `dist/claude/` in pla
 
 ### GitHub Copilot
 
-`dist/copilot/` is a `.github/` directory layout (top-level instructions file, prompts, agents). VS Code Copilot Chat auto-discovers `*.prompt.md` and `*.agent.md` from two locations: the workspace's `.github/` (committed, per-project) and the VS Code user profile (global, never committed). Pick global to match the Claude install.
+`dist/copilot/` is a `.github/` directory layout: native skill directories under `.github/skills/`, custom agents under `.github/agents/`, and an always-on `.github/copilot-instructions.md` digest. GitHub Copilot added native support for the open Agent Skills (`SKILL.md`) format on 2025-12-18, so skills are copied verbatim — bundled scripts and resources intact — and Copilot **auto-activates them by description** (it also exposes each as a `/<name>` command). No conversion is performed; the layout is identical to the Claude target's skill copy.
 
-> **Note:** custom chat modes (`.chatmode.md` / `.github/chatmodes/`) were renamed to custom agents (`.agent.md` / `.github/agents/`) in VS Code 1.106. The build emits the current surface; profile paths below are for current VS Code on macOS and vary by OS/profile (`chat.promptFilesLocations`, `chat.agentFilesLocations`).
+Copilot scans `SKILL.md` directories from project locations (`.github/skills/`, `.claude/skills/`, `.agents/skills/`) and personal locations (`~/.copilot/skills/`, `~/.claude/skills/`). Native scanning is confirmed on stable VS Code (Jan 2026), VS Code Insiders, and the Copilot coding agent; github.com web chat, the JetBrains plugin, and Copilot CLI are unconfirmed.
 
-**Global install** (recommended): `bin/install --target=copilot`. It symlinks the built dist into the VS Code user profile so later `bin/build copilot` runs flow through automatically:
+> **Note:** custom chat modes (`.chatmode.md` / `.github/chatmodes/`) were renamed to custom agents (`.agent.md` / `.github/agents/`) in VS Code 1.106. The build emits the current surface; profile paths below are for current VS Code on macOS and vary by OS/version (`chat.agentSkillsLocations`, `chat.agentFilesLocations`).
+
+**Global install** (recommended): `bin/install --target=copilot`. It symlinks the built dist into your personal Copilot directory so later `bin/build copilot` runs flow through automatically:
 
 ```bash
 bin/build                      # ensure dist/copilot/ is current
-bin/install --target=copilot   # symlink prompts + agents into the VS Code profile
+bin/install --target=copilot   # symlink skills + agents into ~/.copilot/
 ```
 
-This links `dist/copilot/.github/prompts/*.prompt.md` → `~/Library/Application Support/Code/User/prompts/` and `dist/copilot/.github/agents/*.agent.md` → `~/.copilot/agents/`. The install is idempotent and `--uninstall` removes only the symlinks that point back into this repo. Reload the VS Code window (`Cmd+Shift+P` → "Reload Window") and the prompts + agents are globally available in any Copilot Chat session.
+This links `dist/copilot/.github/skills/*` → `~/.copilot/skills/` and `dist/copilot/.github/agents/*.agent.md` → `~/.copilot/agents/`. The install is idempotent and `--uninstall` removes only the symlinks that point back into this repo — and additionally sweeps any stale `*.prompt.md` symlinks left in `~/Library/Application Support/Code/User/prompts/` by versions that predated native skill support, so upgrading does not orphan links. Reload the VS Code window (`Cmd+Shift+P` → "Reload Window") and the skills + agents are globally available in any Copilot Chat session.
 
-The top-level `copilot-instructions.md` in `dist/copilot/.github/` is a discoverability index for workspace installs only — it does not need to be copied to the user profile.
+The top-level `copilot-instructions.md` in `dist/copilot/.github/` is an always-on human-readable index (skill/agent names) for workspace installs — it does not need to be copied to the personal directory.
 
 **Per-workspace install** (single project, alternative):
 
@@ -90,11 +92,12 @@ Run after each install to confirm the MVP success criteria (AE2, AE3, AE4):
 
 **GitHub Copilot (AE3):**
 
-- [ ] `/find-skills` prompt is discoverable
-- [ ] `/controller-patterns` prompt is discoverable
-- [ ] `/ruby-version` prompt is discoverable
-- [ ] `/brave-breakdown` prompt is discoverable
-- [ ] `/routing-patterns` prompt is discoverable
+- [ ] `find-skills` skill is listed / auto-activates (also invocable as `/find-skills`)
+- [ ] `controller-patterns` skill is listed / auto-activates
+- [ ] `ruby-version` skill is listed / auto-activates
+- [ ] `brave-breakdown` skill is listed / auto-activates
+- [ ] `routing-patterns` skill is listed / auto-activates
+- [ ] a skill's bundled resource loads (e.g. `ruby-version/scripts/check.sh` is present in the linked dir)
 - [ ] `dhh-rails-reviewer` agent is selectable
 - [ ] `kieran-rails-reviewer` agent is selectable
 
@@ -120,7 +123,7 @@ targets: [claude, copilot]    # default when omitted
 ---
 ```
 
-Use `targets: [claude]` for content that relies on Claude-specific capabilities with no Copilot analogue (e.g., Claude Code hooks, certain `tools:` declarations). See `docs/research/copilot-plugin-format.md` for the list of features that do not map.
+Use `targets: [claude]` for content that relies on Claude-specific capabilities with no Copilot analogue (e.g., Claude Code hooks). Since Copilot reads `SKILL.md` natively, most skills need no filtering — the same directory serves both tools. See `docs/research/copilot-plugin-format.md` for the agent-mapping details and the remaining Claude-only features.
 
 ## Status
 
