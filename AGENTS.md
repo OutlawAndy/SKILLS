@@ -51,20 +51,18 @@ To update after rebuilding: `bin/build claude` regenerates `dist/claude/` in pla
 
 ### GitHub Copilot
 
-`dist/copilot/` is a `.github/` directory layout (top-level instructions file, prompts, chatmodes). VS Code Copilot Chat auto-discovers `*.prompt.md` and `*.chatmode.md` from two locations: the workspace's `.github/` (committed, per-project) and the VS Code user profile (global, never committed). Pick global to match the Claude install.
+`dist/copilot/` is a `.github/` directory layout (top-level instructions file, prompts, agents). VS Code Copilot Chat auto-discovers `*.prompt.md` and `*.agent.md` from two locations: the workspace's `.github/` (committed, per-project) and the VS Code user profile (global, never committed). Pick global to match the Claude install.
 
-**Global install** (recommended — symlinks so `bin/build copilot` updates flow through automatically):
+> **Note:** custom chat modes (`.chatmode.md` / `.github/chatmodes/`) were renamed to custom agents (`.agent.md` / `.github/agents/`) in VS Code 1.106. The build emits the current surface; profile paths below are for current VS Code on macOS and vary by OS/profile (`chat.promptFilesLocations`, `chat.agentFilesLocations`).
+
+**Global install** (recommended): `bin/install --target=copilot`. It symlinks the built dist into the VS Code user profile so later `bin/build copilot` runs flow through automatically:
 
 ```bash
-src=/Users/andy/CODE/outlaw-skills/dist/copilot/.github
-user=$HOME/Library/Application\ Support/Code/User
-
-mkdir -p "$user/prompts" "$user/chatmodes"
-ln -sfn "$src/prompts"/*.prompt.md     "$user/prompts/"
-ln -sfn "$src/chatmodes"/*.chatmode.md "$user/chatmodes/"
+bin/build                      # ensure dist/copilot/ is current
+bin/install --target=copilot   # symlink prompts + agents into the VS Code profile
 ```
 
-Reload the VS Code window (`Cmd+Shift+P` → "Reload Window") and the 5 prompts + 2 chatmodes are globally available in any Copilot Chat session.
+This links `dist/copilot/.github/prompts/*.prompt.md` → `~/Library/Application Support/Code/User/prompts/` and `dist/copilot/.github/agents/*.agent.md` → `~/.copilot/agents/`. The install is idempotent and `--uninstall` removes only the symlinks that point back into this repo. Reload the VS Code window (`Cmd+Shift+P` → "Reload Window") and the prompts + agents are globally available in any Copilot Chat session.
 
 The top-level `copilot-instructions.md` in `dist/copilot/.github/` is a discoverability index for workspace installs only — it does not need to be copied to the user profile.
 
@@ -97,8 +95,8 @@ Run after each install to confirm the MVP success criteria (AE2, AE3, AE4):
 - [ ] `/ruby-version` prompt is discoverable
 - [ ] `/brave-breakdown` prompt is discoverable
 - [ ] `/routing-patterns` prompt is discoverable
-- [ ] `dhh-rails-reviewer` chatmode is selectable
-- [ ] `kieran-rails-reviewer` chatmode is selectable
+- [ ] `dhh-rails-reviewer` agent is selectable
+- [ ] `kieran-rails-reviewer` agent is selectable
 
 **Coexistence (AE4):**
 

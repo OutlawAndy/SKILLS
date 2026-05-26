@@ -1,5 +1,5 @@
 ---
-mode: agent
+agent: agent
 description: Create a Rails-aware implementation plan by priming pattern skills and
   delegating to ce-plan. Use whenever planning Ruby on Rails work — features, refactors,
   or architectural decisions. Replaces the generic ce-plan workflow for Rails-only

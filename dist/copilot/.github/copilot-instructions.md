@@ -17,9 +17,9 @@ Invoke any of these in Copilot Chat with `/<name>`:
 - **/ruby-version** — Verify what Ruby versions actually exist and install a specific Ruby via rbenv. Use BEFORE asserting that any Ruby version does or doesn't exist (e.g., "Ruby 4.0 isn't out yet", "the latest Ruby is 3.x", "Ruby X.Y.Z doesn't exist"). Also use when the user asks "what's the latest Ruby", "is Ruby X out", "does Ruby X.Y exist", "install Ruby", "switch to Ruby X", "what Ruby is installed", or mentions a specific Ruby version you're unsure about. Claude's training data may be out of date — run `check.sh` first.
 - **/work** — Execute Rails work with mandatory dispatch to layered-rails, ce-dhh-rails-style, controller-patterns, routing-patterns, and frontend-patterns. Use whenever implementing, modifying, or debugging Ruby on Rails code — features, refactors, bug fixes, or focused changes. Replaces the generic ce-work workflow for Rails-only environments. Triggers on phrases like "work this", "implement this", "ship this", or any direct request to do Rails work.
 
-## Available chat modes
+## Available agents
 
-Select from the Copilot Chat mode picker:
+Select from the Copilot Chat agent picker:
 
 - **dhh-rails-reviewer** — Conditional code-review persona, selected when Rails diffs introduce architectural choices, abstractions, or frontend patterns that may fight the framework. Reviews code from an opinionated DHH perspective.
 - **kieran-rails-reviewer** — Conditional code-review persona, selected when the diff touches Rails application code. Reviews Rails changes with Kieran's strict bar for clarity, conventions, and maintainability.

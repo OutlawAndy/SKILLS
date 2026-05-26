@@ -1,5 +1,5 @@
 ---
-mode: agent
+agent: agent
 description: Verify what Ruby versions actually exist and install a specific Ruby
   via rbenv. Use BEFORE asserting that any Ruby version does or doesn't exist (e.g.,
   "Ruby 4.0 isn't out yet", "the latest Ruby is 3.x", "Ruby X.Y.Z doesn't exist").

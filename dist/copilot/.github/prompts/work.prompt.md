@@ -1,5 +1,5 @@
 ---
-mode: agent
+agent: agent
 description: Execute Rails work with mandatory dispatch to layered-rails, ce-dhh-rails-style,
   controller-patterns, routing-patterns, and frontend-patterns. Use whenever implementing,
   modifying, or debugging Ruby on Rails code — features, refactors, bug fixes, or

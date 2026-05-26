@@ -12,17 +12,22 @@ class CopilotTargetTest < Minitest::Test
     @builder.build_target("copilot")
   end
 
-  # Happy path: dist tree shape per research spec.
+  # Happy path: dist tree shape per current VS Code Copilot spec.
   def test_copilot_dist_has_expected_top_level_layout
     assert File.file?(File.join(COPILOT_DIST, ".github", "copilot-instructions.md"))
-    assert File.directory?(File.join(COPILOT_DIST, ".github", "chatmodes"))
+    assert File.directory?(File.join(COPILOT_DIST, ".github", "agents"))
     assert File.directory?(File.join(COPILOT_DIST, ".github", "prompts"))
     assert File.file?(File.join(COPILOT_DIST, "README.md"))
   end
 
-  def test_one_chatmode_per_agent
+  # Edge: the deprecated chatmodes surface must not be emitted.
+  def test_legacy_chatmodes_dir_is_not_emitted
+    refute File.exist?(File.join(COPILOT_DIST, ".github", "chatmodes"))
+  end
+
+  def test_one_agent_file_per_agent
     %w[dhh-rails-reviewer kieran-rails-reviewer].each do |name|
-      path = File.join(COPILOT_DIST, ".github", "chatmodes", "#{name}.chatmode.md")
+      path = File.join(COPILOT_DIST, ".github", "agents", "#{name}.agent.md")
       assert File.exist?(path), "expected #{path}"
     end
   end
@@ -34,7 +39,7 @@ class CopilotTargetTest < Minitest::Test
     end
   end
 
-  def test_top_level_instructions_lists_prompts_and_chatmodes
+  def test_top_level_instructions_lists_prompts_and_agents
     content = File.read(File.join(COPILOT_DIST, ".github", "copilot-instructions.md"))
     assert_includes content, "/controller-patterns"
     assert_includes content, "/find-skills"
@@ -43,25 +48,26 @@ class CopilotTargetTest < Minitest::Test
     assert_includes content, "kieran-rails-reviewer"
   end
 
-  def test_chatmode_frontmatter_translates_tools_and_drops_color
-    fm = read_frontmatter(File.join(COPILOT_DIST, ".github", "chatmodes", "dhh-rails-reviewer.chatmode.md"))
-    assert fm["description"], "expected description in chatmode frontmatter"
+  def test_agent_frontmatter_translates_tools_and_drops_color
+    fm = read_frontmatter(File.join(COPILOT_DIST, ".github", "agents", "dhh-rails-reviewer.agent.md"))
+    assert fm["description"], "expected description in agent frontmatter"
     assert_includes fm["tools"], "codebase"
     assert_includes fm["tools"], "search"
     assert_includes fm["tools"], "runCommands"
-    refute fm.key?("color"), "color must not appear in Copilot chatmode frontmatter"
+    refute fm.key?("color"), "color must not appear in Copilot agent frontmatter"
     refute_equal "inherit", fm["model"], "Claude `model: inherit` must not pass through"
   end
 
-  def test_chatmode_tools_are_deduped_after_translation
-    fm = read_frontmatter(File.join(COPILOT_DIST, ".github", "chatmodes", "dhh-rails-reviewer.chatmode.md"))
+  def test_agent_tools_are_deduped_after_translation
+    fm = read_frontmatter(File.join(COPILOT_DIST, ".github", "agents", "dhh-rails-reviewer.agent.md"))
     # Grep and Glob both map to "search" — must not appear twice.
     assert_equal fm["tools"].length, fm["tools"].uniq.length
   end
 
-  def test_prompt_frontmatter_has_mode_and_description
+  def test_prompt_frontmatter_has_agent_and_description
     fm = read_frontmatter(File.join(COPILOT_DIST, ".github", "prompts", "controller-patterns.prompt.md"))
-    assert_equal "agent", fm["mode"]
+    assert_equal "agent", fm["agent"]
+    refute fm.key?("mode"), "legacy `mode:` field must not be emitted"
     assert fm["description"]
   end
 

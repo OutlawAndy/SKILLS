@@ -1,5 +1,5 @@
 ---
-mode: agent
+agent: agent
 description: Review, generate, and update Rails routes following professional patterns
   and best practices. Covers RESTful resource routing, route concerns for code reusability,
   and shallow nesting strategies.

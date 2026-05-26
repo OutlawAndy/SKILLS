@@ -6,7 +6,8 @@
 # Usage:
 #   bin/install                       # installs Claude hook at ~/.claude/
 #   bin/install --target=claude       # explicit Claude target
-#   bin/install --target=copilot      # (not yet implemented)
+#   bin/install --target=copilot      # symlinks the Copilot dist into VS Code
+#   bin/install --target=copilot --uninstall   # removes those symlinks
 #   bin/install --uninstall           # removes the installed Claude hook
 #   bin/install --dry-run             # prints what would change, does nothing
 #
@@ -14,6 +15,13 @@
 # ~/.claude/hooks/outlaw-rails-gate.sh and merges a PreToolUse entry into
 # ~/.claude/settings.json. The merge is idempotent: re-running detects the
 # existing entry and skips.
+#
+# The Copilot install symlinks the built dist (run bin/build first) into the
+# VS Code user profile: dist/copilot/.github/prompts/*.prompt.md ->
+# ~/Library/Application Support/Code/User/prompts/, and
+# dist/copilot/.github/agents/*.agent.md -> ~/.copilot/agents/. Symlinks mean
+# later `bin/build copilot` runs flow through without reinstalling. It is
+# idempotent and only ever removes symlinks that point back into this repo.
 
 require "json"
 require "fileutils"
@@ -26,6 +34,12 @@ HOOK_DST_DIR = File.join(HOME_CLAUDE, "hooks")
 HOOK_DST = File.join(HOOK_DST_DIR, HOOK_BASENAME)
 SETTINGS_PATH = File.join(HOME_CLAUDE, "settings.json")
 HOOK_MARKER = HOOK_BASENAME # used to detect a previous install
+
+# Copilot install targets (current VS Code spec, macOS).
+COPILOT_DIST = File.join(REPO_ROOT, "dist/copilot/.github")
+VSCODE_PROMPTS_DIR = File.expand_path("~/Library/Application Support/Code/User/prompts")
+COPILOT_AGENTS_DIR = File.expand_path("~/.copilot/agents")
+COPILOT_LINK_ROOT = File.join(REPO_ROOT, "dist/copilot") # symlinks under here are "ours"
 
 class Installer
   def initialize(dry_run:)
@@ -51,7 +65,57 @@ class Installer
     report
   end
 
+  def install_copilot
+    unless File.directory?(COPILOT_DIST)
+      abort "Copilot dist not found at #{COPILOT_DIST}.\nRun `bin/build` (or `bin/build copilot`) first, then re-run this install."
+    end
+
+    plan_symlinks(File.join(COPILOT_DIST, "prompts"), "*.prompt.md", VSCODE_PROMPTS_DIR)
+    plan_symlinks(File.join(COPILOT_DIST, "agents"), "*.agent.md", COPILOT_AGENTS_DIR)
+
+    apply!
+    report
+    puts "Reload the VS Code window (Cmd+Shift+P -> \"Reload Window\") to pick up changes." unless @dry_run
+  end
+
+  def uninstall_copilot
+    plan_unlinks(VSCODE_PROMPTS_DIR, "*.prompt.md")
+    plan_unlinks(COPILOT_AGENTS_DIR, "*.agent.md")
+
+    apply!
+    report
+  end
+
   private
+
+  def plan_symlinks(src_dir, glob, dst_dir)
+    sources = Dir.glob(File.join(src_dir, glob)).sort
+    if sources.empty?
+      @changes << [:noop, "No #{glob} to install from #{src_dir}"]
+      return
+    end
+    sources.each do |src|
+      dst = File.join(dst_dir, File.basename(src))
+      if File.symlink?(dst) && File.readlink(dst) == src
+        @changes << [:noop, "Symlink already current: #{dst}"]
+      else
+        @changes << [:symlink, src, dst]
+      end
+    end
+  end
+
+  # Removes only symlinks that point back into this repo's dist/copilot — never
+  # touches a user's own prompt/agent files.
+  def plan_unlinks(dst_dir, glob)
+    ours = Dir.glob(File.join(dst_dir, glob)).select do |p|
+      File.symlink?(p) && File.readlink(p).start_with?(COPILOT_LINK_ROOT)
+    end
+    if ours.empty?
+      @changes << [:noop, "No outlaw-skills symlinks in #{dst_dir}"]
+      return
+    end
+    ours.sort.each { |p| @changes << [:unlink, p] }
+  end
 
   def plan_copy(src, dst)
     if File.exist?(dst) && File.read(src) == File.read(dst)
@@ -102,6 +166,15 @@ class Installer
       when :remove
         _, path = change
         do_it("remove #{path}") { FileUtils.rm_f(path) }
+      when :symlink
+        _, src, dst = change
+        do_it("symlink #{dst} -> #{src}") do
+          FileUtils.mkdir_p(File.dirname(dst))
+          FileUtils.ln_sf(src, dst)
+        end
+      when :unlink
+        _, path = change
+        do_it("unlink #{path}") { File.delete(path) if File.symlink?(path) }
       when :settings_add
         _, settings = change
         do_it("add rails-gate PreToolUse entry to #{SETTINGS_PATH}") do
@@ -134,13 +207,16 @@ class Installer
               when :noop then "skip"
               when :copy then "copy"
               when :remove then "remove"
+              when :symlink then "symlink"
+              when :unlink then "unlink"
               when :settings_add then "settings+"
               when :settings_remove then "settings-"
               end
       detail = case kind
                when :noop then change[1]
                when :copy then "#{change[1]} -> #{change[2]}"
-               when :remove then change[1]
+               when :remove, :unlink then change[1]
+               when :symlink then "#{change[2]} -> #{change[1]}"
                when :settings_add, :settings_remove then SETTINGS_PATH
                end
       puts "  #{label.ljust(10)} #{detail}"
@@ -207,7 +283,7 @@ case target
 when "claude"
   mode == :uninstall ? installer.uninstall_claude : installer.install_claude
 when "copilot"
-  abort "--target=copilot is not yet implemented. Copilot hooks will land in a follow-up."
+  mode == :uninstall ? installer.uninstall_copilot : installer.install_copilot
 else
-  abort "Unknown target: #{target}. Supported: claude (copilot pending)."
+  abort "Unknown target: #{target}. Supported: claude, copilot."
 end

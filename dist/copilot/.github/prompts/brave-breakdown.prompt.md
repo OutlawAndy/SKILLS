@@ -1,5 +1,5 @@
 ---
-mode: agent
+agent: agent
 description: 'Use this skill to guide a developer or designer through a BRAVE framework
   breakdown of a task before they start work. Trigger whenever someone wants to think
   through a ticket, break down a card, plan their approach before starting, validate

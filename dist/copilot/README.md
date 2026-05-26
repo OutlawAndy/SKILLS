@@ -10,13 +10,19 @@ Two options:
    ```
    cp -r dist/copilot/.github /path/to/your/repo/
    ```
-   Skills become available as `/name` slash commands; chat modes appear in the
-   Copilot Chat mode picker; the always-on digest in `.github/copilot-instructions.md`
+   Skills become available as `/name` slash commands; agents appear in the
+   Copilot Chat agent picker; the always-on digest in `.github/copilot-instructions.md`
    is auto-loaded into every Copilot Chat request in that workspace.
 
-2. **User-scoped install (VS Code)** — symlink `prompts/` and `chatmodes/`
-   into your VS Code user profile per VS Code's `chat.promptFilesLocations`
-   setting. Exact location varies by OS; see current VS Code docs.
+2. **User-scoped install (VS Code, macOS)** — symlink the generated files into
+   your VS Code user profile so they're available in every workspace:
+   ```
+   ln -sfn "$PWD"/dist/copilot/.github/prompts/*.prompt.md \
+     "$HOME/Library/Application Support/Code/User/prompts/"
+   ln -sfn "$PWD"/dist/copilot/.github/agents/*.agent.md "$HOME/.copilot/agents/"
+   ```
+   Paths vary by OS and VS Code profile; see current VS Code docs
+   (`chat.promptFilesLocations`, `chat.agentFilesLocations`).
 
 ## Source
 

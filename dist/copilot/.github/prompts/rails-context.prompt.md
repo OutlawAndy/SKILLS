@@ -1,5 +1,5 @@
 ---
-mode: agent
+agent: agent
 description: Internal Rails posture primer loaded by outlaw-skills workflow skills
   (`/work`, `/plan`, and future `/brainstorm`, `/ideate`). Not meant to be invoked
   standalone — provides operating assumptions, repo-shape probe steps, posture defaults,
