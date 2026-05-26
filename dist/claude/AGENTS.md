@@ -4,7 +4,7 @@ A personal cross-tool layer of AI coding-agent skills and reviewer personas. Can
 
 ## Project Layout
 
-```
+```text
 outlaw-skills/
   src/                 # canonical, tool-agnostic source of truth
     skills/            # skill directories with SKILL.md + optional assets
@@ -24,7 +24,7 @@ outlaw-skills/
 
 ## Build
 
-```
+```sh
 bin/build              # builds both targets (default)
 bin/build claude       # builds dist/claude/ only
 bin/build copilot      # builds dist/copilot/ only
@@ -40,7 +40,7 @@ After building, install the appropriate `dist/` into your tool.
 
 The repo ships a local marketplace manifest at `.claude-plugin/marketplace.json` that points at `dist/claude/`. From any Claude Code session:
 
-```
+```text
 /plugin marketplace add /Users/andy/CODE/outlaw-skills
 /plugin install outlaw-skills@outlaw-skills
 ```
@@ -51,19 +51,30 @@ To update after rebuilding: `bin/build claude` regenerates `dist/claude/` in pla
 
 ### GitHub Copilot
 
-`dist/copilot/` is a `.github/` directory layout (instruction file, prompts, chatmodes). VS Code Copilot Chat auto-discovers it when present in the workspace.
+`dist/copilot/` is a `.github/` directory layout (top-level instructions file, prompts, chatmodes). VS Code Copilot Chat auto-discovers `*.prompt.md` and `*.chatmode.md` from two locations: the workspace's `.github/` (committed, per-project) and the VS Code user profile (global, never committed). Pick global to match the Claude install.
 
-**Per-workspace install** (single project):
+**Global install** (recommended — symlinks so `bin/build copilot` updates flow through automatically):
 
+```bash
+src=/Users/andy/CODE/outlaw-skills/dist/copilot/.github
+user=$HOME/Library/Application\ Support/Code/User
+
+mkdir -p "$user/prompts" "$user/chatmodes"
+ln -sfn "$src/prompts"/*.prompt.md     "$user/prompts/"
+ln -sfn "$src/chatmodes"/*.chatmode.md "$user/chatmodes/"
 ```
+
+Reload the VS Code window (`Cmd+Shift+P` → "Reload Window") and the 5 prompts + 2 chatmodes are globally available in any Copilot Chat session.
+
+The top-level `copilot-instructions.md` in `dist/copilot/.github/` is a discoverability index for workspace installs only — it does not need to be copied to the user profile.
+
+**Per-workspace install** (single project, alternative):
+
+```bash
 ln -s /Users/andy/CODE/outlaw-skills/dist/copilot/.github /path/to/project/.github
 ```
 
-(Or copy if the project already has its own `.github/`.)
-
-**User-profile install** (global): copy the contents of `dist/copilot/.github/prompts/` and `dist/copilot/.github/chatmodes/` into your VS Code user profile's prompt/chatmode locations. See `docs/research/copilot-plugin-format.md` §"User-level install paths" for current VS Code conventions.
-
-Reload the VS Code window after install for Copilot Chat to pick up new files.
+(Only if the project has no existing `.github/`.)
 
 ## Verification Checklist
 
