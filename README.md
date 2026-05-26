@@ -23,7 +23,7 @@ Full install details, target filtering, and the verification checklist live in [
 The test suite is plain Minitest with no Gemfile or Rakefile:
 
 ```sh
-ruby -Ilib -Itest -e "Dir['test/*_test.rb'].each { |f| require_relative f }"
+minitest
 ```
 
 Tests cover the build pipeline, target filtering, the Copilot target, and build idempotency.
