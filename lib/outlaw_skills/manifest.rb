@@ -4,7 +4,7 @@ module OutlawSkills
     DESCRIPTION = "Personal cross-tool layer of AI coding-agent skills and reviewer personas."
     AUTHOR = {
       "name" => "Andy Cohen",
-      "email" => "andy.cohen@rolemodelsoftware.com"
+      "email" => "outlawandy@gmail.com"
     }.freeze
     LICENSE = "MIT"
     KEYWORDS = %w[ai-tooling code-review rails ruby agent-skills].freeze
