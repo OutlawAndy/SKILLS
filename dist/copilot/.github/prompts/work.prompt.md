@@ -16,9 +16,31 @@ description: Execute Rails work with mandatory dispatch to layered-rails, ce-dhh
 >
 > This gate exists because previous sessions skipped the Rails skill loads and authored code without them. Soft instructions deeper in this file are not enough. The gate is here, at the top, before any planning, because the agent (you) cannot be trusted to scroll down and obey a Phase 3 instruction once the implementation impulse has taken over.
 >
-> ### Pre-flight checklist
+> ### Step 1 — Detect mode
 >
-> 1. **Read** [references/rails-context.md](references/rails-context.md) — in full, not paraphrased.
+> Look at `<input_document>` (the `$ARGUMENTS` value below). Does it point to a plan file?
+>
+> - **Yes — a plan file path.** Read the plan's YAML frontmatter and check for `planned_with: outlaw-plan`.
+>   - **Marker present** → enter **Light Mode** (Step 2L). The plan already did the pattern thinking.
+>   - **Marker absent** (raw `ce-plan` output, hand-written plan, or plan from another tool) → enter **Heavy Mode** (Step 2H). The plan exists but pattern decisions were not surfaced; treat as if planning never happened.
+> - **No — bare prompt** (description of work, not a file path) → enter **Heavy Mode** (Step 2H).
+>
+> ### Step 2L — Light Mode pre-flight
+>
+> A plan with `planned_with: outlaw-plan` is a trust contract: pattern skills were primed during planning, Pattern Decisions are recorded, per-unit `Patterns to follow` is populated. You may rely on it.
+>
+> 1. **Invoke `rails-context` via the Skill tool.** Posture and probe steps still apply to execution.
+> 2. **Read the plan's `pattern_skills_loaded` frontmatter list. Invoke each named skill via the Skill tool.** This reproduces, at execution time, the same pattern framing the planner used. Do not paraphrase from memory.
+> 3. **Read the plan's `## Pattern Decisions` section before designing any unit.** Treat its decisions as authoritative. If you find yourself disagreeing with a Pattern Decision during execution, stop and surface it to the user — do not silently override it.
+> 4. **Self-attest** with the block in Step 3 below, listing `mode: light` and the skills actually loaded.
+>
+> Skip the heavy classify-and-load ceremony — the plan did it. Skip the "recommend `/plan`" step in Phase 1 — you are already running plan output.
+>
+> ### Step 2H — Heavy Mode pre-flight
+>
+> No upstream pattern thinking is trusted. Load defensively.
+>
+> 1. **Invoke `rails-context` via the Skill tool** — loads the Rails posture primer in full. Do not paraphrase.
 > 2. **Invoke `ce-dhh-rails-style` via the Skill tool** — ambient framing, every session.
 > 3. **Classify the work.** Read the user's request and identify which of these categories it touches. Multiple categories can apply.
 >
@@ -32,16 +54,21 @@ description: Execute Rails work with mandatory dispatch to layered-rails, ce-dhh
 >
 > 4. **Load every applicable skill** via the Skill tool, *before* doing any planning or code authoring. Do not paraphrase loaded skills from memory; load them fresh each session.
 >
-> 5. **Self-attest in your response.** Before your first Edit/Write/MultiEdit call, produce a visible acknowledgment block in this exact format:
+> 5. **Strongly consider recommending `/plan` first** when the work is non-trivial. A plan-driven `/work` runs in Light Mode and is faster, safer, and produces better-scoped commits. If the user declines or the work is genuinely trivial, continue.
 >
->    ```
->    ## /work pre-flight
->    - Work touches: <comma-separated category names>
->    - Loaded skills: <comma-separated skill names>
->    - rails-context.md: read
->    ```
+> ### Step 3 — Self-attest
 >
->    If the acknowledgment block is missing, the gate is not passed. A hook-based gate (`bin/install` in outlaw-skills) may additionally block your Edit/Write calls on Rails-shaped paths until the relevant skill has been loaded this session.
+> Before your first Edit/Write/MultiEdit call, produce a visible acknowledgment block in this exact format:
+>
+> ```
+> ## /work pre-flight
+> - Mode: <light|heavy>
+> - Plan: <path or "none — bare prompt">
+> - Work touches: <comma-separated category names>
+> - Loaded skills: <comma-separated skill names>  # must include rails-context
+> ```
+>
+> If the acknowledgment block is missing, the gate is not passed. A hook-based gate (`bin/install` in outlaw-skills) may additionally block your Edit/Write calls on Rails-shaped paths until the relevant skill has been loaded this session.
 >
 > ### When the gate does NOT apply
 >
@@ -49,7 +76,7 @@ description: Execute Rails work with mandatory dispatch to layered-rails, ce-dhh
 > - The work is purely git/shell operations with no source-file edits.
 > - The user is asking a question, not requesting code changes.
 >
-> When in doubt, assume the gate applies.
+> When in doubt, assume the gate applies and run Heavy Mode.
 
 ---
 
@@ -61,24 +88,27 @@ description: Execute Rails work with mandatory dispatch to layered-rails, ce-dhh
 
 ## Phase 1: Input Triage
 
-(The pre-flight gate above has already loaded `rails-context.md` and the relevant skills. If it has not, return to the gate.)
+(The pre-flight gate above has already loaded `rails-context` and the relevant skills. If it has not, return to the gate.)
 
-Determine how to proceed based on `<input_document>`.
+Determine how to proceed based on `<input_document>` and the mode established by the pre-flight gate.
 
-- **Plan document** (file path to an existing plan/specification) → read it fully, then go to Phase 2.
-- **Bare prompt** (description of work, not a file path) → assess complexity:
+- **Light Mode (plan with `planned_with: outlaw-plan`)** → read the plan fully, including `## Pattern Decisions` and each unit's `Patterns to follow` field. Build a task list from the plan's implementation units. Continue to Phase 2. Skip the "recommend `/plan`" prompt — you are already executing a `/plan`-produced doc.
+
+- **Heavy Mode, plan input (plan without our marker)** → read it fully. Note that pattern decisions are not surfaced; you'll need to re-derive them during Phase 2/3. Continue to Phase 2.
+
+- **Heavy Mode, bare prompt** → assess complexity:
 
   | Complexity | Signals | Action |
   |---|---|---|
   | **Trivial** | 1–2 files, no behavioral change (typo, config, rename) | Skip task-list ceremony. Implement directly. Pre-flight gate still applies if any Ruby/Rails code is touched. |
   | **Small / Medium** | Clear scope, under ~10 files | Build a task list. Continue to Phase 2. |
-  | **Large** | Cross-cutting, architectural decisions, 10+ files, touches auth/payments/migrations or anything touching layered-rails boundaries | Recommend `/ce-brainstorm` or `/ce-plan` first. Honor user's choice; if proceeding, build a task list. |
+  | **Large** | Cross-cutting, architectural decisions, 10+ files, touches auth/payments/migrations or anything touching layered-rails boundaries | Recommend `/plan` (Rails-aware) or `/ce-brainstorm` first. Honor user's choice; if proceeding, build a task list. |
 
 ---
 
 ## Phase 2: Repo-Shape Probe
 
-Before designing or writing anything Rails-specific, run the probe from `rails-context.md` §2. At minimum:
+Before designing or writing anything Rails-specific, run the probe from `rails-context` §2. At minimum:
 
 - Read `Gemfile` to identify Rails version, auth, authz, jobs, testing framework, frontend stack.
 - Read `.ruby-version`.
@@ -97,9 +127,11 @@ Do not skip this probe. Bad Rails advice almost always comes from assuming a gen
 
 ## Phase 3: Recheck Triggers After Probe
 
-The pre-flight gate classified the work from the user's request. The repo-shape probe may reveal additional trigger categories the user did not mention — e.g., the work the user described as "add an archive button" may require a new route, a controller change, and a callback rewrite.
+The pre-flight gate classified the work from the user's request (Heavy Mode) or trusted the plan's `pattern_skills_loaded` list (Light Mode). The repo-shape probe may reveal additional trigger categories — e.g., the work the user described as "add an archive button" may require a new route, a controller change, and a callback rewrite.
 
-**If the probe reveals new trigger categories, return to the pre-flight gate and load the additional skills before proceeding.** Re-emit the `## /work pre-flight` block with the updated category and skill list.
+**Heavy Mode:** If the probe reveals new trigger categories, return to the pre-flight gate and load the additional skills before proceeding. Re-emit the `## /work pre-flight` block with the updated category and skill list.
+
+**Light Mode:** If the probe reveals a category the plan did not name (and therefore did not load), this is a signal the plan was incomplete. Load the missing skill, but also surface the gap to the user: "The plan did not address <category>; loading <skill> now. Consider re-running `/plan` to capture this in Pattern Decisions before continuing." Re-emit the pre-flight block with the augmented skill list.
 
 ---
 
@@ -152,7 +184,7 @@ For each task in priority order:
 
 ### Pressure tests (run silently)
 
-Use `rails-context.md` §7 before proposing each implementation. If a pressure test triggers, route to the relevant mandatory skill before continuing.
+Use `rails-context` §7 before proposing each implementation. If a pressure test triggers, route to the relevant mandatory skill before continuing.
 
 ---
 
