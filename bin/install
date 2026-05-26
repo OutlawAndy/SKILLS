@@ -1,0 +1,289 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+#
+# bin/install — wire outlaw-skills hooks into the host tool's config.
+#
+# Usage:
+#   bin/install                       # installs Claude hook at ~/.claude/
+#   bin/install --target=claude       # explicit Claude target
+#   bin/install --target=copilot      # symlinks the Copilot dist into VS Code
+#   bin/install --target=copilot --uninstall   # removes those symlinks
+#   bin/install --uninstall           # removes the installed Claude hook
+#   bin/install --dry-run             # prints what would change, does nothing
+#
+# The Claude install copies src/skills/work/hooks/rails-gate.sh to
+# ~/.claude/hooks/outlaw-rails-gate.sh and merges a PreToolUse entry into
+# ~/.claude/settings.json. The merge is idempotent: re-running detects the
+# existing entry and skips.
+#
+# The Copilot install symlinks the built dist (run bin/build first) into the
+# VS Code user profile: dist/copilot/.github/prompts/*.prompt.md ->
+# ~/Library/Application Support/Code/User/prompts/, and
+# dist/copilot/.github/agents/*.agent.md -> ~/.copilot/agents/. Symlinks mean
+# later `bin/build copilot` runs flow through without reinstalling. It is
+# idempotent and only ever removes symlinks that point back into this repo.
+
+require "json"
+require "fileutils"
+
+REPO_ROOT = File.expand_path("..", __dir__)
+HOME_CLAUDE = File.expand_path("~/.claude")
+HOOK_BASENAME = "outlaw-rails-gate.sh"
+HOOK_SRC = File.join(REPO_ROOT, "src/skills/work/hooks/rails-gate.sh")
+HOOK_DST_DIR = File.join(HOME_CLAUDE, "hooks")
+HOOK_DST = File.join(HOOK_DST_DIR, HOOK_BASENAME)
+SETTINGS_PATH = File.join(HOME_CLAUDE, "settings.json")
+HOOK_MARKER = HOOK_BASENAME # used to detect a previous install
+
+# Copilot install targets (current VS Code spec, macOS).
+COPILOT_DIST = File.join(REPO_ROOT, "dist/copilot/.github")
+VSCODE_PROMPTS_DIR = File.expand_path("~/Library/Application Support/Code/User/prompts")
+COPILOT_AGENTS_DIR = File.expand_path("~/.copilot/agents")
+COPILOT_LINK_ROOT = File.join(REPO_ROOT, "dist/copilot") # symlinks under here are "ours"
+
+class Installer
+  def initialize(dry_run:)
+    @dry_run = dry_run
+    @changes = []
+  end
+
+  def install_claude
+    abort "Hook source not found at #{HOOK_SRC}" unless File.exist?(HOOK_SRC)
+
+    plan_copy(HOOK_SRC, HOOK_DST)
+    plan_settings_merge
+
+    apply!
+    report
+  end
+
+  def uninstall_claude
+    plan_remove(HOOK_DST)
+    plan_settings_remove
+
+    apply!
+    report
+  end
+
+  def install_copilot
+    unless File.directory?(COPILOT_DIST)
+      abort "Copilot dist not found at #{COPILOT_DIST}.\nRun `bin/build` (or `bin/build copilot`) first, then re-run this install."
+    end
+
+    plan_symlinks(File.join(COPILOT_DIST, "prompts"), "*.prompt.md", VSCODE_PROMPTS_DIR)
+    plan_symlinks(File.join(COPILOT_DIST, "agents"), "*.agent.md", COPILOT_AGENTS_DIR)
+
+    apply!
+    report
+    puts "Reload the VS Code window (Cmd+Shift+P -> \"Reload Window\") to pick up changes." unless @dry_run
+  end
+
+  def uninstall_copilot
+    plan_unlinks(VSCODE_PROMPTS_DIR, "*.prompt.md")
+    plan_unlinks(COPILOT_AGENTS_DIR, "*.agent.md")
+
+    apply!
+    report
+  end
+
+  private
+
+  def plan_symlinks(src_dir, glob, dst_dir)
+    sources = Dir.glob(File.join(src_dir, glob)).sort
+    if sources.empty?
+      @changes << [:noop, "No #{glob} to install from #{src_dir}"]
+      return
+    end
+    sources.each do |src|
+      dst = File.join(dst_dir, File.basename(src))
+      if File.symlink?(dst) && File.readlink(dst) == src
+        @changes << [:noop, "Symlink already current: #{dst}"]
+      else
+        @changes << [:symlink, src, dst]
+      end
+    end
+  end
+
+  # Removes only symlinks that point back into this repo's dist/copilot — never
+  # touches a user's own prompt/agent files.
+  def plan_unlinks(dst_dir, glob)
+    ours = Dir.glob(File.join(dst_dir, glob)).select do |p|
+      File.symlink?(p) && File.readlink(p).start_with?(COPILOT_LINK_ROOT)
+    end
+    if ours.empty?
+      @changes << [:noop, "No outlaw-skills symlinks in #{dst_dir}"]
+      return
+    end
+    ours.sort.each { |p| @changes << [:unlink, p] }
+  end
+
+  def plan_copy(src, dst)
+    if File.exist?(dst) && File.read(src) == File.read(dst)
+      @changes << [:noop, "Hook already up-to-date: #{dst}"]
+    else
+      @changes << [:copy, src, dst]
+    end
+  end
+
+  def plan_remove(path)
+    if File.exist?(path)
+      @changes << [:remove, path]
+    else
+      @changes << [:noop, "Hook not present: #{path}"]
+    end
+  end
+
+  def plan_settings_merge
+    settings = load_settings
+    if claude_hook_installed?(settings)
+      @changes << [:noop, "settings.json already contains the rails-gate PreToolUse entry"]
+    else
+      @changes << [:settings_add, settings]
+    end
+  end
+
+  def plan_settings_remove
+    settings = load_settings
+    if claude_hook_installed?(settings)
+      @changes << [:settings_remove, settings]
+    else
+      @changes << [:noop, "settings.json does not contain the rails-gate PreToolUse entry"]
+    end
+  end
+
+  def apply!
+    @changes.each do |change|
+      case change[0]
+      when :noop
+        # nothing to do
+      when :copy
+        _, src, dst = change
+        do_it("copy #{src} -> #{dst}") do
+          FileUtils.mkdir_p(File.dirname(dst))
+          FileUtils.cp(src, dst)
+          FileUtils.chmod(0o755, dst)
+        end
+      when :remove
+        _, path = change
+        do_it("remove #{path}") { FileUtils.rm_f(path) }
+      when :symlink
+        _, src, dst = change
+        do_it("symlink #{dst} -> #{src}") do
+          FileUtils.mkdir_p(File.dirname(dst))
+          FileUtils.ln_sf(src, dst)
+        end
+      when :unlink
+        _, path = change
+        do_it("unlink #{path}") { File.delete(path) if File.symlink?(path) }
+      when :settings_add
+        _, settings = change
+        do_it("add rails-gate PreToolUse entry to #{SETTINGS_PATH}") do
+          settings["hooks"] ||= {}
+          settings["hooks"]["PreToolUse"] ||= []
+          settings["hooks"]["PreToolUse"] << {
+            "matcher" => "Edit|Write|MultiEdit|NotebookEdit",
+            "hooks" => [
+              {"type" => "command", "command" => HOOK_DST}
+            ]
+          }
+          write_settings(settings)
+        end
+      when :settings_remove
+        _, settings = change
+        do_it("remove rails-gate PreToolUse entry from #{SETTINGS_PATH}") do
+          settings["hooks"]["PreToolUse"].reject! { |entry| hook_entry_is_ours?(entry) }
+          settings["hooks"].delete("PreToolUse") if settings["hooks"]["PreToolUse"].empty?
+          settings.delete("hooks") if settings["hooks"].empty?
+          write_settings(settings)
+        end
+      end
+    end
+  end
+
+  def report
+    @changes.each do |change|
+      kind = change[0]
+      label = case kind
+              when :noop then "skip"
+              when :copy then "copy"
+              when :remove then "remove"
+              when :symlink then "symlink"
+              when :unlink then "unlink"
+              when :settings_add then "settings+"
+              when :settings_remove then "settings-"
+              end
+      detail = case kind
+               when :noop then change[1]
+               when :copy then "#{change[1]} -> #{change[2]}"
+               when :remove, :unlink then change[1]
+               when :symlink then "#{change[2]} -> #{change[1]}"
+               when :settings_add, :settings_remove then SETTINGS_PATH
+               end
+      puts "  #{label.ljust(10)} #{detail}"
+    end
+    puts(@dry_run ? "(dry-run; no changes written)" : "Done.")
+  end
+
+  def do_it(label)
+    if @dry_run
+      # action skipped; report() will print it
+    else
+      yield
+    end
+  end
+
+  def load_settings
+    return {} unless File.exist?(SETTINGS_PATH)
+    JSON.parse(File.read(SETTINGS_PATH))
+  rescue JSON::ParserError => e
+    abort "Could not parse #{SETTINGS_PATH}: #{e.message}"
+  end
+
+  def write_settings(settings)
+    FileUtils.mkdir_p(HOME_CLAUDE)
+    if File.exist?(SETTINGS_PATH)
+      backup = "#{SETTINGS_PATH}.bak.#{Time.now.strftime("%Y%m%d-%H%M%S")}"
+      FileUtils.cp(SETTINGS_PATH, backup)
+      puts "  backup     #{backup}"
+    end
+    File.write(SETTINGS_PATH, JSON.pretty_generate(settings) + "\n")
+  end
+
+  def claude_hook_installed?(settings)
+    Array(settings.dig("hooks", "PreToolUse")).any? { |entry| hook_entry_is_ours?(entry) }
+  end
+
+  def hook_entry_is_ours?(entry)
+    Array(entry["hooks"]).any? { |h| h["command"].to_s.include?(HOOK_MARKER) }
+  end
+end
+
+# --- CLI -----------------------------------------------------------------
+
+target = "claude"
+mode = :install
+dry_run = false
+
+ARGV.each do |arg|
+  case arg
+  when /\A--target=(.+)\z/ then target = Regexp.last_match(1)
+  when "--uninstall" then mode = :uninstall
+  when "--dry-run" then dry_run = true
+  when "-h", "--help"
+    puts File.read(__FILE__).lines[2..21].map { |l| l.sub(/\A#\s?/, "") }.join
+    exit 0
+  else
+    abort "Unknown argument: #{arg}"
+  end
+end
+
+installer = Installer.new(dry_run: dry_run)
+
+case target
+when "claude"
+  mode == :uninstall ? installer.uninstall_claude : installer.install_claude
+when "copilot"
+  mode == :uninstall ? installer.uninstall_copilot : installer.install_copilot
+else
+  abort "Unknown target: #{target}. Supported: claude, copilot."
+end
