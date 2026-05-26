@@ -1,6 +1,7 @@
 ---
 name: controller-patterns
 description: Review and update existing Rails controllers and generate new controllers following professional patterns and best practices. Covers RESTful conventions, authorization patterns, proper error handling, and maintainable code organization.
+based_on: RoleModel/RoleModel-Skills@controller-patterns
 ---
 
 # Rails Controller Patterns

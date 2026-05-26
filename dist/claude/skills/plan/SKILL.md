@@ -2,6 +2,7 @@
 name: plan
 description: Create a Rails-aware implementation plan by priming pattern skills and delegating to ce-plan. Use whenever planning Ruby on Rails work — features, refactors, or architectural decisions. Replaces the generic ce-plan workflow for Rails-only environments. Triggers on phrases like "plan this", "create a plan", "write a tech plan", "plan the implementation", "how should we build", "what's the approach for", or "break this down".
 argument-hint: "[optional: feature description, requirements doc path, plan path to deepen]"
+based_on: 'CompoundEngineering:plan'
 ---
 
 # /plan — Rails-Aware Planning

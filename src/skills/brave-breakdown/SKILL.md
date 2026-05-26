@@ -13,6 +13,7 @@ description: >
   to pick up a card and want to break it down". If someone mentions starting
   work on a card and wants help planning, validating, or understanding it
   first — this skill should run.
+based_on: RoleModel/RoleModel-Skills@brave-breakdown
 metadata:
   triggers:
     - BRAVE

@@ -1,6 +1,7 @@
 ---
 name: routing-patterns
 description: Review, generate, and update Rails routes following professional patterns and best practices. Covers RESTful resource routing, route concerns for code reusability, and shallow nesting strategies.
+based_on: RoleModel/RoleModel-Skills@routing-patterns
 ---
 
 # Routes Best Practices
