@@ -34,10 +34,66 @@ The build is idempotent — running it twice on unchanged source produces byte-i
 
 ## Install
 
-After building, install the appropriate `dist/` into your tool:
+After building, install the appropriate `dist/` into your tool.
 
-- **Claude Code:** install `dist/claude/` per Claude Code's local plugin mechanism (verified install steps appear at the bottom of this file once U7 of the original plan has been executed).
-- **GitHub Copilot:** install `dist/copilot/` per `docs/research/copilot-plugin-format.md`.
+### Claude Code
+
+The repo ships a local marketplace manifest at `.claude-plugin/marketplace.json` that points at `dist/claude/`. From any Claude Code session:
+
+```
+/plugin marketplace add /Users/andy/CODE/outlaw-skills
+/plugin install outlaw-skills@outlaw-skills
+```
+
+After the install, restart the session (or run `/plugin` to confirm). Upstream plugins (compound-engineering, layered-rails, ruby-lsp, microsoft-docs) remain installed alongside without modification — coexistence is the intentional MVP posture.
+
+To update after rebuilding: `bin/build claude` regenerates `dist/claude/` in place; Claude Code re-reads the plugin contents on session start. If skills or agents don't refresh, run `/plugin marketplace update outlaw-skills` and reinstall.
+
+### GitHub Copilot
+
+`dist/copilot/` is a `.github/` directory layout (instruction file, prompts, chatmodes). VS Code Copilot Chat auto-discovers it when present in the workspace.
+
+**Per-workspace install** (single project):
+
+```
+ln -s /Users/andy/CODE/outlaw-skills/dist/copilot/.github /path/to/project/.github
+```
+
+(Or copy if the project already has its own `.github/`.)
+
+**User-profile install** (global): copy the contents of `dist/copilot/.github/prompts/` and `dist/copilot/.github/chatmodes/` into your VS Code user profile's prompt/chatmode locations. See `docs/research/copilot-plugin-format.md` §"User-level install paths" for current VS Code conventions.
+
+Reload the VS Code window after install for Copilot Chat to pick up new files.
+
+## Verification Checklist
+
+Run after each install to confirm the MVP success criteria (AE2, AE3, AE4):
+
+**Claude Code (AE2):**
+
+- [ ] `/find-skills` invokes successfully
+- [ ] `/controller-patterns` invokes successfully
+- [ ] `/ruby-version` invokes successfully
+- [ ] `/brave-breakdown` invokes successfully
+- [ ] `/routing-patterns` invokes successfully
+- [ ] `dhh-rails-reviewer` agent is dispatchable
+- [ ] `kieran-rails-reviewer` agent is dispatchable
+
+**GitHub Copilot (AE3):**
+
+- [ ] `/find-skills` prompt is discoverable
+- [ ] `/controller-patterns` prompt is discoverable
+- [ ] `/ruby-version` prompt is discoverable
+- [ ] `/brave-breakdown` prompt is discoverable
+- [ ] `/routing-patterns` prompt is discoverable
+- [ ] `dhh-rails-reviewer` chatmode is selectable
+- [ ] `kieran-rails-reviewer` chatmode is selectable
+
+**Coexistence (AE4):**
+
+- [ ] After Claude install, `compound-engineering`, `layered-rails`, `ruby-lsp`, `microsoft-docs` still load and function
+- [ ] Any command-name collisions are listed here:
+  - _(none observed, or list them — e.g., `/foo` exists in both X and outlaw-skills)_
 
 ## Canonical Source Conventions
 

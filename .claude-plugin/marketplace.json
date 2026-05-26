@@ -1,0 +1,23 @@
+{
+  "name": "outlaw-skills",
+  "owner": {
+    "name": "Andy Cohen",
+    "url": "https://github.com/andycohen"
+  },
+  "metadata": {
+    "description": "Personal cross-tool layer of AI coding-agent skills and reviewer personas.",
+    "version": "0.1.0"
+  },
+  "plugins": [
+    {
+      "name": "outlaw-skills",
+      "description": "Personal cross-tool layer of AI coding-agent skills and reviewer personas.",
+      "version": "0.1.0",
+      "author": {
+        "name": "Andy Cohen"
+      },
+      "tags": ["ai-tooling", "code-review", "rails", "ruby", "agent-skills"],
+      "source": "./dist/claude"
+    }
+  ]
+}
