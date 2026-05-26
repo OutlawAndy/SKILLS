@@ -4,18 +4,18 @@
 
 Cross-tool layer of curated coding-agent guidance. The content under this `.github/` directory is generated from canonical source in the outlaw-skills repo.
 
-## Available prompts
+## Available skills
 
-Invoke any of these in Copilot Chat with `/<name>`:
+These ship as native Agent Skills under `.github/skills/`. Copilot auto-activates them by description when relevant; you can also invoke one directly with `/<name>`. (Names only — Copilot reads each skill's own description, so it is not repeated here.)
 
-- **/brave-breakdown** — Use this skill to guide a developer or designer through a BRAVE framework breakdown of a task before they start work. Trigger whenever someone wants to think through a ticket, break down a card, plan their approach before starting, validate a task before picking it up, or prepare a breakdown to share with a teammate or client. Also trigger for any of these phrases or close variations: "BRAVE this", "brave it", "break down this card", "think through this ticket", "help me plan this out before I start", "want to make sure I understand this before I start coding", "want to revalidate this card", "help me think through this before my standup/meeting", or "I'm about to pick up a card and want to break it down". If someone mentions starting work on a card and wants help planning, validating, or understanding it first — this skill should run.
-- **/controller-patterns** — Review and update existing Rails controllers and generate new controllers following professional patterns and best practices. Covers RESTful conventions, authorization patterns, proper error handling, and maintainable code organization.
-- **/find-skills** — Helps users discover and install agent skills when they ask questions like "how do I do X", "find a skill for X", "is there a skill that can...", or express interest in extending capabilities. This skill should be used when the user is looking for functionality that might exist as an installable skill.
-- **/plan** — Create a Rails-aware implementation plan by priming pattern skills and delegating to ce-plan. Use whenever planning Ruby on Rails work — features, refactors, or architectural decisions. Replaces the generic ce-plan workflow for Rails-only environments. Triggers on phrases like "plan this", "create a plan", "write a tech plan", "plan the implementation", "how should we build", "what's the approach for", or "break this down".
-- **/rails-context** — Internal Rails posture primer loaded by outlaw-skills workflow skills (`/work`, `/plan`, and future `/brainstorm`, `/ideate`). Not meant to be invoked standalone — provides operating assumptions, repo-shape probe steps, posture defaults, mandatory dispatch triggers, and pressure tests that orient subsequent Rails work. Workflow skills load this before pattern skills so they share a single Rails framing.
-- **/routing-patterns** — Review, generate, and update Rails routes following professional patterns and best practices. Covers RESTful resource routing, route concerns for code reusability, and shallow nesting strategies.
-- **/ruby-version** — Verify what Ruby versions actually exist and install a specific Ruby via rbenv. Use BEFORE asserting that any Ruby version does or doesn't exist (e.g., "Ruby 4.0 isn't out yet", "the latest Ruby is 3.x", "Ruby X.Y.Z doesn't exist"). Also use when the user asks "what's the latest Ruby", "is Ruby X out", "does Ruby X.Y exist", "install Ruby", "switch to Ruby X", "what Ruby is installed", or mentions a specific Ruby version you're unsure about. Claude's training data may be out of date — run `check.sh` first.
-- **/work** — Execute Rails work with mandatory dispatch to layered-rails, ce-dhh-rails-style, controller-patterns, routing-patterns, and frontend-patterns. Use whenever implementing, modifying, or debugging Ruby on Rails code — features, refactors, bug fixes, or focused changes. Replaces the generic ce-work workflow for Rails-only environments. Triggers on phrases like "work this", "implement this", "ship this", or any direct request to do Rails work.
+- **brave-breakdown**
+- **controller-patterns**
+- **find-skills**
+- **plan**
+- **rails-context**
+- **routing-patterns**
+- **ruby-version**
+- **work**
 
 ## Available agents
 
