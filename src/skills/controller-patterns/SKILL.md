@@ -167,7 +167,7 @@ end
 - Use `params.expect(model: [...])`
 - Nested attributes should map to `accepts_nested_attributes_for` or `<value-object-method-name>_attributes=` definitions on the model.
 - Nested attributes should include `id` & `_destroy` for updates and deletions.
-- **DO NOT** fetch individual values by key. **ALWAYS** Pass directly into persistance method calls. This is known as mass assignment and is a key aspect of the pattern.
+- **DO NOT** fetch individual values by key. **ALWAYS** Pass directly into persistence method calls. This is known as mass assignment and is a key aspect of the pattern.
 - If you need to massage attribute values do so in the models assignment method or consider if a form object is a better fit.
 - If you need to massage attribute keys, than you've done something wrong and should reconsider your approach. Form input names should map directly to assignment methods on the model or form object in all cases.
 - It is acceptable to merge additional keys into the params hash at the same time as it's passed into the persistence method. But if you find yourself doing that often, ask yourself why and what would need to change for it to not be necessary.
