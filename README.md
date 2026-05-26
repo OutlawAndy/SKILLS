@@ -1,10 +1,10 @@
 # outlaw-skills
 
-A personal cross-tool layer of AI coding-agent skills and reviewer personas, building into both Claude Code and GitHub Copilot from one canonical source.
+A multi-harness skill pipeline & my personal customization layer atop the growing pile of excellent open-source skills that I use & appreciate, ***but also disagree with at one level or another*** 😉
 
 ## Quick start
 
-Clone, then build the per-tool distributions and install:
+The `dist` directory already contains prebuilt plugins for all supported targets. Though they are not available on any official marketplace currently.  So you'll need to clone this repo and then run `bin/install --target=<DESIRED-TARGET>` to setup global (user level) symlinks in the appropriate location.
 
 ```sh
 bin/build                     # builds dist/claude/ and dist/copilot/
