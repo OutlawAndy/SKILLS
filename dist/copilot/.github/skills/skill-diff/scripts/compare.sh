@@ -52,6 +52,26 @@ find_repo_root() {
   return 1
 }
 
+# Locate the local skill's SKILL.md across the layouts skill-diff runs in:
+#   1. a source checkout you're working in: <root>/src/skills/<name>/SKILL.md
+#      (preferred when the cwd is inside an outlaw-skills checkout)
+#   2. installed alongside skill-diff:      <skills-dir>/<name>/SKILL.md
+# skill-diff always sits as a sibling of the other skill dirs, so case 2 covers
+# every install target — ~/.copilot/skills/<name>, ~/.claude/skills/<name>, and
+# src/skills/<name> when run from a checkout — without knowing the target name.
+find_local_skill() {
+  local name=$1 root cand script_dir skills_dir
+  if root=$(find_repo_root "$PWD"); then
+    cand="$root/src/skills/$name/SKILL.md"
+    [ -f "$cand" ] && { printf '%s' "$cand"; return 0; }
+  fi
+  script_dir=$(cd "$(dirname "$0")" && pwd)   # .../<skill-diff>/scripts
+  skills_dir=${script_dir%/*}; skills_dir=${skills_dir%/*}  # -> .../<skills>
+  cand="$skills_dir/$name/SKILL.md"
+  [ -f "$cand" ] && { printf '%s' "$cand"; return 0; }
+  return 1
+}
+
 # Extract the based_on value from a SKILL.md frontmatter block (quotes stripped).
 extract_based_on() {
   local v
@@ -184,12 +204,8 @@ name=$1
 
 command -v gh >/dev/null 2>&1 || die "gh (GitHub CLI) is required but not installed — see https://cli.github.com/"
 
-repo_root=$(find_repo_root "$(cd "$(dirname "$0")" && pwd)") \
-  || repo_root=$(find_repo_root "$PWD") \
-  || die "could not locate the outlaw-skills repo root (no src/skills found)"
-
-skill_md="$repo_root/src/skills/$name/SKILL.md"
-[ -f "$skill_md" ] || die "no local skill at src/skills/$name/SKILL.md" 1
+skill_md=$(find_local_skill "$name") \
+  || die "no local skill named '$name' found (looked in ./src/skills/$name and alongside skill-diff)" 1
 
 resolve_upstream "$name" "$skill_md"; rc=$?
 [ "$rc" -eq 0 ] || { [ "$rc" -ge 10 ] && exit 0 || exit "$rc"; }
