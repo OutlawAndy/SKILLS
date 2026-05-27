@@ -2,6 +2,13 @@
 
 A multi-harness skill pipeline & my personal customization layer atop the growing pile of excellent open-source skills that I use & appreciate, ***but also disagree with at one level or another*** 😉
 
+## Skill Diff
+
+Enables comparisons of the upstream version of forked skills in this repo.
+
+e.g. /work
+![work](./assets/skill-diff-example.png)
+
 ## Quick start
 
 The `dist` directory already contains prebuilt plugins for all supported targets. Though they are not available on any official marketplace currently.  So you'll need to clone this repo and then run `bin/install --target=<DESIRED-TARGET>` to setup global (user level) symlinks in the appropriate location.
