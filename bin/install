@@ -78,6 +78,12 @@ class Installer
     # `*` matches the skill directories; plan_symlinks/apply! are type-agnostic.
     plan_symlinks(File.join(COPILOT_DIST, "skills"), "*", COPILOT_SKILLS_DIR)
     plan_symlinks(File.join(COPILOT_DIST, "agents"), "*.agent.md", COPILOT_AGENTS_DIR)
+    # Self-healing migration: older versions shipped skills as *.prompt.md files
+    # symlinked into the VS Code prompts dir. Once skills became native SKILL.md
+    # directories, those links dangle (their dist/copilot/.github/prompts targets
+    # are gone). Sweep them on install so upgrading via `bin/install` alone fully
+    # migrates, rather than requiring a separate --uninstall first.
+    plan_unlinks(VSCODE_PROMPTS_DIR, "*.prompt.md")
 
     apply!
     report
