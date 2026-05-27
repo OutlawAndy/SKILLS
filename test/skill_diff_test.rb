@@ -102,11 +102,12 @@ class SkillDiffTest < Minitest::Test
     assert_match(/usage/, out)
   end
 
-  def test_unknown_alias_reports_cleanly
+  def test_legacy_alias_format_reports_cleanly
     with_temp_skill(based_on: "BogusAlias:thing") do |script, name|
       out, status = run_script(script, "--resolve-only", name)
-      assert_equal 0, status, "unknown alias should exit 0"
-      assert_match(/unknown based_on alias/, out)
+      assert_equal 0, status, "unsupported based_on format should exit 0"
+      assert_match(/unrecognized based_on format/, out)
+      assert_match(/expected owner\/repo@skill/, out)
     end
   end
 
