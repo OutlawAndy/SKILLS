@@ -19,17 +19,6 @@
 
 set -uo pipefail
 
-# --- alias map: literal `based_on` alias token -> GitHub owner/repo -----------
-# Add a line here to support a new marketplace-style based_on alias. The key is
-# the exact token used in based_on values (e.g. `CompoundEngineering:plan`), NOT
-# a marketplace manifest name.
-resolve_alias() {
-  case "$1" in
-    CompoundEngineering) echo "EveryInc/compound-engineering-plugin" ;;
-    *) return 1 ;;
-  esac
-}
-
 # --- helpers -----------------------------------------------------------------
 prog=${0##*/}
 die()  { echo "$prog: error: $1" >&2; exit "${2:-2}"; }
@@ -128,7 +117,7 @@ match_from_paths() {
 
 # --- resolution: based_on -> owner/repo + upstream SKILL.md path -------------
 # Sets globals: R_OWNER R_REPO R_PATH. Returns non-empty status only on hard
-# errors; "expected" misses (no based_on, unknown alias, no/ambiguous match)
+# errors; "expected" misses (no based_on, no/ambiguous match)
 # are reported via info() and signalled by a 10+ return so the caller can exit 0.
 R_OWNER=""; R_REPO=""; R_PATH=""
 resolve_upstream() {
@@ -142,15 +131,8 @@ resolve_upstream() {
     repo=${rest%%@*}
     rest=${rest#*@}                              # skill[@ref]
     uskill=${rest%%@*}                           # trailing @ref tolerated, ignored
-  elif [[ "$based_on" == *:* && "$based_on" != */* ]]; then  # Alias:skill[@ref]
-    local alias=${based_on%%:*}
-    rest=${based_on#*:}                          # skill[@ref]
-    uskill=${rest%%@*}
-    local ownerrepo
-    ownerrepo=$(resolve_alias "$alias") || { info "unknown based_on alias '$alias' for '$name' (add it to the alias map)"; return 11; }
-    owner=${ownerrepo%%/*}; repo=${ownerrepo#*/}
   else
-    info "unrecognized based_on format '$based_on' for '$name'"; return 12
+    info "unrecognized based_on format '$based_on' for '$name' (expected owner/repo@skill[@ref])"; return 12
   fi
 
   [[ "$owner"  =~ $OWNER_RE ]] || die "invalid owner in based_on: '$owner'" 1

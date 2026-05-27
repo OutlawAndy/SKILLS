@@ -1,27 +1,25 @@
 ---
 name: skill-diff
-description: Compare one local skill to its upstream equivalent, fetched fresh from GitHub, and show a raw diff with a summary header. Works on a skill in a source checkout (src/skills/) or one installed alongside skill-diff (e.g. ~/.copilot/skills/, ~/.claude/skills/). Use when asked to "compare a skill to upstream", "diff this skill against its source", "what changed upstream", "is my fork behind upstream", or to check whether a customized skill has drifted from the open-source skill it is based on.
+description: Compare one local skill to its upstream equivalent, fetched fresh from GitHub, and produce a dual-drift report (local customizations vs upstream changes worth adopting) grounded in the raw diff.
 license: MIT
 metadata:
   triggers:
-    - compare upstream
+    - compare with original
     - diff against upstream
     - compare skill to upstream
-    - what changed upstream
-    - is my fork behind
     - skill drift
     - based_on
 ---
 
 # skill-diff
 
-Single-script skill that compares one local skill against the upstream skill it was forked from. It reads the local skill's `based_on:` frontmatter, fetches the upstream `SKILL.md` **fresh from GitHub** (never from a local marketplace copy, which may be stale), and prints a raw textual diff preceded by a short summary header.
+Single-script skill that compares a customized skill against the original. It reads the local skill's `based_on:` frontmatter, fetches the upstream `SKILL.md` **fresh from GitHub** (never from a local marketplace copy, which may be stale), and prints a raw textual diff preceded by a short summary header. Claude then interprets that output into a markdown comparison table plus a dual summary: local customizations and upstream changes worth adopting.
 
 ## What it shows (and what it does not)
 
 The diff is a **two-way comparison** between your local `SKILL.md` and the current upstream HEAD — i.e. *current divergence*. For skills that track upstream closely this is effectively "what changed upstream." For skills that are substantial rewrites (e.g. `plan`, `work`), the diff is a full comparison, not a "since-fork delta"; the header flags this so the output is not misread. A true three-way "what changed upstream since I forked" view is a future addition (see "Fork-point ref", below).
 
-The tool only **reports** drift. It never edits a skill, never applies upstream changes, and never rewrites `based_on`. It compares `SKILL.md` only — bundled `scripts/` and `references/` are not diffed (the header notes when upstream has them).
+The tool only **reports** drift. It never edits a skill, never applies upstream changes, and never rewrites `based_on`. It compares `SKILL.md` only — bundled `scripts/` and `references/` are not diffed (though substantially different file counts are reported in the header). The upstream skill is fetched fresh on each run, so the diff always reflects the latest upstream state, not a cached or local copy.
 
 ## Requirements
 
@@ -54,12 +52,11 @@ The script finds the local `SKILL.md` to compare in two ways, in order:
 
 ## How upstream is resolved
 
-The local skill's `based_on:` frontmatter points at the upstream source. Two grammars are supported:
+The local skill's `based_on:` frontmatter points at the upstream source. One grammar is supported:
 
 | Grammar | Example | Meaning |
 |---|---|---|
 | `owner/repo@skill` | `RoleModel/RoleModel-Skills@controller-patterns` | GitHub `owner/repo`, upstream skill dir `controller-patterns` |
-| `Alias:skill` | `CompoundEngineering:plan` | Marketplace alias resolved via the inline alias map, upstream skill `plan` |
 
 An optional trailing `@<ref>` (e.g. `owner/repo@skill@<sha>`) is tolerated and currently ignored — it reserves the grammar slot for the future fork-point diff.
 
@@ -67,30 +64,62 @@ Resolution queries the upstream repo's git tree once (`gh api .../git/trees/HEAD
 
 A skill with no `based_on:` (an original skill, like this one) reports "no upstream recorded" and exits cleanly.
 
-## The alias map (extension point)
-
-Marketplace-style `based_on` values (`Alias:skill`) resolve through a small inline map at the top of `scripts/compare.sh`:
-
-```sh
-# alias  ->  owner/repo
-CompoundEngineering   EveryInc/compound-engineering-plugin
-```
-
-To support a new marketplace alias, add one line mapping the **literal alias token used in `based_on:` values** to its GitHub `owner/repo`. The `owner/repo@skill` grammar needs no alias entry.
-
 ## Output
 
-A summary header followed by the raw `SKILL.md` diff, for example:
+The script emits a summary header and the raw `SKILL.md` diff. Then Claude interprets that output into a structured dual-drift report.
+
+Script output example:
 
 ```
 skill-diff: controller-patterns
   upstream: RoleModel/RoleModel-Skills @ skills/controller-patterns/SKILL.md (HEAD a1b2c3d)
   frontmatter: differs (local-only: based_on)
   body: 4 changed hunks
---- (raw diff follows) ---
+
+┌─────────────────────┬─────────────────────┬─────────────────────┐
+│ Area                │ Local (your fork)   │ Upstream            │
+├─────────────────────┼─────────────────────┼─────────────────────┤
+--- (one row per meaningful divergence area, not one row per diff line) ---
+
+--- raw diff (local vs upstream) ---
++ ...
+- ...
+
 ```
 
-The header separates expected frontmatter-only differences (a local fork may add `based_on` and/or `targets`) from body divergence, so you can tell intentional customizations apart from upstream changes worth adopting.
+Claude interpretation protocol:
+
+1. Run `compare.sh` and read both the header and raw diff.
+2. Build a markdown table with columns: `Area`, `Local (your fork)`, `Upstream`, `Likely category`.
+3. Add one row per meaningful divergence area (frontmatter and each changed section/concern), not one row per diff line.
+4. Write two short summaries:
+  - `Local customizations`: what diverges locally and why it is likely intentional.
+  - `Upstream changes worth adopting`: what likely changed upstream and may be worth porting.
+5. Include this caveat verbatim:
+  - `Caveat: categories are inferred from content in a two-way local-vs-HEAD diff; they are not git-proven provenance. A recorded fork-point SHA (see "Fork-point ref (future)") would make this exact.`
+
+Categorization heuristics:
+
+- Local-only frontmatter keys like `based_on` and `targets`, and repo-specific workflow tailoring prose, usually indicate `Local customization`.
+- New upstream sections/features absent locally usually indicate `Upstream change worth adopting`.
+- Use the script header signals (`frontmatter: ...`, `substantial rewrite` note) as weighting hints.
+- If a row is genuinely ambiguous, mark it as `Ambiguous` and explain why.
+
+Rendered-report example:
+
+| Area | Local (your fork) | Upstream | Likely category |
+|---|---|---|---|
+| Frontmatter | Adds `based_on` for traceability | No `based_on` key | Local customization |
+| Trigger phrasing | Includes repo-specific trigger wording | Uses generic upstream trigger set | Local customization |
+| New upstream section | Missing locally | Adds new section on workflow guardrails | Upstream change worth adopting |
+
+Local customizations:
+- The fork adds `based_on` and workflow-specific wording to fit local usage conventions.
+
+Upstream changes worth adopting:
+- Upstream introduced a guardrail section not present locally; consider porting if it aligns with this repo's workflow.
+
+Caveat: categories are inferred from content in a two-way local-vs-HEAD diff; they are not git-proven provenance. A recorded fork-point SHA (see "Fork-point ref (future)") would make this exact.
 
 ## Fork-point ref (future)
 

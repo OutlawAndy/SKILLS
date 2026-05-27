@@ -2,7 +2,7 @@
 name: work
 description: Execute Rails work with mandatory dispatch to layered-rails, ce-dhh-rails-style, controller-patterns, routing-patterns, and frontend-patterns. Use whenever implementing, modifying, or debugging Ruby on Rails code — features, refactors, bug fixes, or focused changes. Replaces the generic ce-work workflow for Rails-only environments. Triggers on phrases like "work this", "implement this", "ship this", or any direct request to do Rails work.
 argument-hint: "[Plan doc path or description of work. Blank to auto-use latest plan doc]"
-based_on: 'CompoundEngineering:work'
+based_on: 'EveryInc/compound-engineering-plugin@ce-work'
 ---
 
 # /work — Rails Execution
