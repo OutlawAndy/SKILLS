@@ -11,6 +11,7 @@ These ship as native Agent Skills under `.github/skills/`. Copilot auto-activate
 - **brave-breakdown**
 - **controller-patterns**
 - **find-skills**
+- **frontend-patterns**
 - **plan**
 - **rails-context**
 - **routing-patterns**

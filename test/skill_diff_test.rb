@@ -86,7 +86,7 @@ class SkillDiffTest < Minitest::Test
   # --- resolver behavior (offline; these paths fail before any gh call) -----
 
   def test_no_based_on_reports_cleanly
-    out, status = run_cli("--resolve-only", "ruby-version")
+    out, status = run_cli("--resolve-only", "skill-diff")
     assert_equal 0, status, "no-based_on should exit 0"
     assert_match(/no upstream recorded/, out)
   end

@@ -1,6 +1,7 @@
 ---
 name: ruby-version
 description: Verify what Ruby versions actually exist and install a specific Ruby via rbenv. Use BEFORE asserting that any Ruby version does or doesn't exist (e.g., "Ruby 4.0 isn't out yet", "the latest Ruby is 3.x", "Ruby X.Y.Z doesn't exist"). Also use when the user asks "what's the latest Ruby", "is Ruby X out", "does Ruby X.Y exist", "install Ruby", "switch to Ruby X", "what Ruby is installed", or mentions a specific Ruby version you're unsure about. Claude's training data may be out of date — run `check.sh` first.
+based_on: RoleModel/RoleModel-Skills@ruby-version
 license: MIT
 metadata:
   triggers:
