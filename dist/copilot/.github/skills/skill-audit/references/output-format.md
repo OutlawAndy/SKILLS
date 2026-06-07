@@ -73,8 +73,8 @@ After the report, offer three modes (R19):
 
 ### Optional `md-audit` handoff (R20/R21)
 
-When changes were applied, close with a plain-prose suggestion — not a live tool call (the skill does not exist yet):
+When changes were applied, close with a plain-prose suggestion:
 
-> Applied N change(s). For a mechanical cleanup pass — formatting, unambiguous grammar and typos, with all normative text left untouched — consider running `md-audit` on this skill once it exists. `skill-audit` deliberately leaves mechanical hygiene alone.
+> Applied N change(s). For a mechanical cleanup pass — formatting and unambiguous typos, with all normative text left untouched — consider running `/md-audit <target>`. `skill-audit` deliberately leaves mechanical hygiene to `md-audit`.
 
-Do not attempt to invoke `md-audit`; surfacing the suggestion is the whole handoff.
+Surface the suggestion as text and **stop** — do not invoke `md-audit` in the same turn. The handoff is a recommendation for the user to act on, not an automatic chained call; auto-running a second skill the user didn't ask for is exactly the over-reach to avoid, and it matters more now that `md-audit` exists and auto-activates on phrases like "fix formatting".
