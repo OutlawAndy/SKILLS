@@ -68,13 +68,25 @@ Read `references/typo-gate.md` and run the gated LLM typo check over the (now fo
 
 ## Phase 4: Diff & apply
 
-Run the apply interaction (detailed in `references/safe-formatting.md` and `references/typo-gate.md` for what's in each section): present one diff with two clearly labeled sections — **deterministic formatting fixes** and **proposed typo fixes** (and a third **reported, not fixed** list for skipped items). Offer:
+Present the collected changes as **one diff with three clearly labeled sections**, so the user sees exactly what each pass produced and the rendered-output-altering formatting fixes are never silent:
 
-- **report-only** — write nothing.
-- **walk through** — confirm each fix individually.
-- **apply all** — apply formatting as a reviewed batch and typo fixes as a confirmable batch.
+1. **Deterministic formatting fixes** — the `markdownlint-cli2 --fix` changes. Call out the rendered-output-altering ones (MD004 bullet style, MD047 trailing newline, MD009 trailing-space hard-breaks, MD012 blank-line collapse — see `references/safe-formatting.md`).
+2. **Proposed typo fixes** — the in-allowlist, before/after typo corrections from `references/typo-gate.md`.
+3. **Reported, not fixed** — typo candidates the gate deliberately did not touch (inside a normative directive, context-dependent, an identifier, or style). These are surfaced for the human and are **never** part of any apply.
 
-Write applied edits to `src/skills/<target>/` files, remind the user to run `bin/build`, and stop. If invoked as `skill-audit`'s handoff, the same flow applies.
+Then offer three modes:
+
+| Mode | Behavior |
+|---|---|
+| **report-only** | Write nothing. The diff and the reported-not-fixed list stand as the output. |
+| **walk through** | Confirm each fix individually (formatting and typo), applying only the ones the user accepts. |
+| **apply all** | Apply the formatting fixes as a reviewed batch and the proposed typo fixes as a confirmable batch. The "reported, not fixed" items are never included — they require human action by definition. |
+
+Write applied edits to the canonical `src/skills/<target>/` files, **never `dist/`** (`dist/` is generated and would be reverted on the next build). After writing, remind the user plainly: **"Run `bin/build` to regenerate `dist/` for both targets."**
+
+Degenerate case: a target with no `references/` is processed on `SKILL.md` alone — no special handling beyond the smaller file set.
+
+When invoked as `skill-audit`'s post-apply handoff, the same flow applies — `md-audit` runs as its own pass over the same target, after `skill-audit`'s semantic changes have landed.
 
 ---
 
