@@ -16,6 +16,7 @@ These ship as native Agent Skills under `.github/skills/`. Copilot auto-activate
 - **rails-context**
 - **routing-patterns**
 - **ruby-version**
+- **skill-audit**
 - **skill-diff**
 - **work**
 
