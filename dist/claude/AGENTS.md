@@ -88,6 +88,7 @@ Run after each install to confirm the MVP success criteria (AE2, AE3, AE4):
 - [ ] `/brave-breakdown` invokes successfully
 - [ ] `/routing-patterns` invokes successfully
 - [ ] `/skill-audit` invokes successfully
+- [ ] `/md-audit` invokes successfully
 - [ ] `dhh-rails-reviewer` agent is dispatchable
 - [ ] `kieran-rails-reviewer` agent is dispatchable
 
@@ -99,6 +100,7 @@ Run after each install to confirm the MVP success criteria (AE2, AE3, AE4):
 - [ ] `brave-breakdown` skill is listed / auto-activates
 - [ ] `routing-patterns` skill is listed / auto-activates
 - [ ] `skill-audit` skill is listed / auto-activates
+- [ ] `md-audit` skill is listed / auto-activates
 - [ ] a skill's bundled resource loads (e.g. `ruby-version/scripts/check.sh` is present in the linked dir)
 - [ ] `dhh-rails-reviewer` agent is selectable
 - [ ] `kieran-rails-reviewer` agent is selectable

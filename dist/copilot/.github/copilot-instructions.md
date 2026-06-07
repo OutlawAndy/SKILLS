@@ -12,6 +12,7 @@ These ship as native Agent Skills under `.github/skills/`. Copilot auto-activate
 - **controller-patterns**
 - **find-skills**
 - **frontend-patterns**
+- **md-audit**
 - **plan**
 - **rails-context**
 - **routing-patterns**

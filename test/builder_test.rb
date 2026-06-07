@@ -51,6 +51,28 @@ class BuilderTest < Minitest::Test
     assert_includes digest, "skill-audit"
   end
 
+  # md-audit ships to both targets verbatim (SKILL.md + references/, including
+  # the bundled non-dot markdownlint-cli2 config) and is listed in the digest.
+  def test_md_audit_builds_into_both_targets_and_digest
+    @builder.build_target("copilot")
+    copilot_dist = File.join(ROOT, "dist", "copilot")
+
+    assert File.exist?(File.join(CLAUDE_DIST, "skills", "md-audit", "SKILL.md")),
+      "expected md-audit/SKILL.md in claude dist"
+    assert File.exist?(File.join(copilot_dist, ".github", "skills", "md-audit", "SKILL.md")),
+      "expected md-audit/SKILL.md in copilot dist"
+
+    %w[safe-formatting.md typo-gate.md markdownlint-cli2.jsonc].each do |ref|
+      assert File.exist?(File.join(CLAUDE_DIST, "skills", "md-audit", "references", ref)),
+        "expected md-audit/references/#{ref} in claude dist"
+      assert File.exist?(File.join(copilot_dist, ".github", "skills", "md-audit", "references", ref)),
+        "expected md-audit/references/#{ref} in copilot dist"
+    end
+
+    digest = File.read(File.join(copilot_dist, ".github", "copilot-instructions.md"))
+    assert_includes digest, "md-audit"
+  end
+
   def test_ruby_version_subdirectory_assets_copied
     assert File.exist?(File.join(CLAUDE_DIST, "skills", "ruby-version", "scripts", "check.sh"))
     assert File.exist?(File.join(CLAUDE_DIST, "skills", "ruby-version", "scripts", "install.sh"))
