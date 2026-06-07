@@ -1,0 +1,30 @@
+// md-audit bundled markdownlint-cli2 config.
+//
+// Passed EXPLICITLY via `--config` so the rule set is fixed regardless of
+// where the target skill lives — md-audit must never inherit an ambient
+// `.markdownlint.*` from a target's host repo (markdownlint walks up the
+// directory tree looking for one; an explicit --config is what prevents a
+// stray config from silently changing the rules).
+//
+// Posture: enable markdownlint's defaults (the auto-fixable rules are the
+// safe formatting set), then disable the opinion/prose rules that are noisy
+// on skill markdown and NOT auto-fixable — so the report stays clean and
+// `--fix` only ever touches whitespace/structure, never prose or meaning.
+{
+  "config": {
+    "default": true,
+
+    // Disabled: noisy on normal skill prose, not auto-fixable, no hygiene value.
+    "MD013": false, // line-length — every SKILL.md has prose lines > 80 chars
+    "MD033": false, // inline HTML — some skills legitimately use it
+    "MD041": false, // first-line-heading — references/*.md need not start with H1
+    "MD036": false, // emphasis-as-heading — bold leader labels are intentional
+    "MD024": { "siblings_only": true } // duplicate headings OK under different parents
+  },
+
+  // Apply auto-fixes. md-audit still shows the resulting diff before writing —
+  // a few fixable rules (MD004 bullet style, MD047 trailing newline, MD009
+  // trailing-space hard-breaks, MD012 blank-line collapse) alter rendered
+  // output, so they are reviewed, not silently applied.
+  "fix": true
+}
