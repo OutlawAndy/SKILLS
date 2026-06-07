@@ -29,6 +29,28 @@ class BuilderTest < Minitest::Test
     end
   end
 
+  # skill-audit ships to both targets verbatim (SKILL.md + references/) and is
+  # listed in the Copilot always-on digest.
+  def test_skill_audit_builds_into_both_targets_and_digest
+    @builder.build_target("copilot")
+    copilot_dist = File.join(ROOT, "dist", "copilot")
+
+    assert File.exist?(File.join(CLAUDE_DIST, "skills", "skill-audit", "SKILL.md")),
+      "expected skill-audit/SKILL.md in claude dist"
+    assert File.exist?(File.join(copilot_dist, ".github", "skills", "skill-audit", "SKILL.md")),
+      "expected skill-audit/SKILL.md in copilot dist"
+
+    %w[decomposition lens-contradiction lens-redundancy lens-dilution load-bearing-guard output-format].each do |ref|
+      assert File.exist?(File.join(CLAUDE_DIST, "skills", "skill-audit", "references", "#{ref}.md")),
+        "expected skill-audit/references/#{ref}.md in claude dist"
+      assert File.exist?(File.join(copilot_dist, ".github", "skills", "skill-audit", "references", "#{ref}.md")),
+        "expected skill-audit/references/#{ref}.md in copilot dist"
+    end
+
+    digest = File.read(File.join(copilot_dist, ".github", "copilot-instructions.md"))
+    assert_includes digest, "skill-audit"
+  end
+
   def test_ruby_version_subdirectory_assets_copied
     assert File.exist?(File.join(CLAUDE_DIST, "skills", "ruby-version", "scripts", "check.sh"))
     assert File.exist?(File.join(CLAUDE_DIST, "skills", "ruby-version", "scripts", "install.sh"))
