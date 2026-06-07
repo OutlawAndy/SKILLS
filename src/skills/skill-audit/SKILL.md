@@ -65,13 +65,13 @@ When the target has no `references/` directory, decompose `SKILL.md` alone and a
 
 ## Phase 3: Lens passes
 
-Read each lens prompt file and run it as a sequential in-context pass over the whole ledger, collecting findings in the shared schema (defined in `references/decomposition.md`):
+Read each lens prompt file in turn and run it as a sequential in-context pass over the whole ledger, collecting findings in the shared schema (defined in `references/decomposition.md`). Run them in this fixed order so the report's grouping falls out naturally:
 
 1. `references/lens-contradiction.md` — every internal clash, high-confidence, with a proposed fix direction.
 2. `references/lens-redundancy.md` — same-altitude duplicates only; intended progressive disclosure is not a finding.
 3. `references/lens-dilution.md` — content that doesn't earn its place in the decision path.
 
-Each lens sees the **whole skill**, never a shard.
+Each lens sees the **whole skill**, never a shard — running them as in-context passes (not dispatched subagents) is what guarantees this and what keeps every pass scoring the same `U<N>` IDs. Hold all findings together; do not adjudicate yet (that is the guard's job).
 
 ---
 
@@ -83,7 +83,15 @@ If no lens emitted a non-`keep` candidate, skip this phase and render the no-fin
 
 ## Phase 5: Merge & rank
 
-Merge and dedup findings by unit ID, assign final dispositions from the guard's verdicts, and order the report contradictions → redundancy → dilution. Mark every contradiction as never-auto-apply. See `references/output-format.md` for the merge/rank detail.
+Reconcile the lens findings and the guard's verdicts into one ranked set:
+
+1. **Apply guard verdicts.** For each candidate the guard reviewed, take its verdict as final: a downgraded finding becomes `keep` (drop it from the report's actionable set, but it may be worth a one-line "considered and kept" note when the guard named a regression); a retargeted finding moves its disposition to the unit the guard chose. Surviving cuts/trims/relocates keep their disposition.
+2. **Merge by unit ID.** Group findings that reference the same `unit_ids`. Because every pass scored the same canonical ledger, two findings about `U7` are genuinely about the same unit — merge them into one finding that lists every lens that flagged it and the union of their evidence. A unit flagged by two lenses (e.g. redundant *and* diluting) produces one merged finding, not two.
+3. **Dedup.** Collapse findings whose `unit_ids` and disposition are identical; keep the highest-confidence evidence.
+4. **Rank.** Order strictly by lens class: **contradictions first, then redundancy, then dilution** (R18). Within a class, order by confidence (high → low).
+5. **Flag contradictions confirm-only.** Mark every contradiction finding as never-auto-apply (R14), regardless of any bulk-apply choice downstream.
+
+The result is one merged, de-duplicated, ranked finding set keyed to ledger unit IDs. Hand it to Phase 6. The report/apply *shape* lives in `references/output-format.md`; the merge logic above lives here.
 
 ---
 
