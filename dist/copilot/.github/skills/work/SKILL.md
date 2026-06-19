@@ -189,7 +189,7 @@ Use `rails-context` §7 before proposing each implementation. If a pressure test
 **Mid-execution fit-friction.** The "make the change easy" test (§7's first bullet) fires *before* you write the change — when you notice the surrounding structure does not naturally accommodate it. Two responses:
 
 - **Trivial prep (1–2 mechanical moves):** pause, do the prep, commit it as a separate "refactor: …" commit, then continue with the now-easy feature change. Two commits, clean diff.
-- **Non-trivial prep (cross-layer, multi-file, or touches `layered-rails` boundaries):** pause and surface to the user — re-planning may be warranted before continuing, so prep units can be ordered explicitly via `/plan` rather than improvised mid-flight.
+- **Non-trivial prep (more than ~2 file moves, or crosses `layered-rails` boundaries):** pause and surface to the user — re-planning may be warranted before continuing, so prep units can be ordered explicitly via `/plan` rather than improvised mid-flight.
 
 Distinguish this from Phase 7 simplification: Phase 7 cleans up *after* a cluster of units ships. Fit-friction fires *before* a unit ships, when the structure rejects the change.
 

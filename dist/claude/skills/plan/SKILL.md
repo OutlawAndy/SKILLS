@@ -90,7 +90,7 @@ Before invoking, set these expectations for the plan output:
 
    This line is required even when no Pattern Decisions exist — it forces an explicit fit-friction check before planning concludes.
 
-   Skip this section only when the plan is genuinely pattern-trivial (e.g., a typo fix that somehow needed a plan). In that case, write `## Pattern Decisions\n\nNone — work is pattern-neutral. Fit assessment: feature fits existing <subject>; no prep units required.` (the `Fit assessment:` line is required even here) rather than omitting the heading, so `/work` can still detect the marker structure.
+   Skip this section only when the plan is genuinely pattern-trivial (e.g., a typo fix that somehow needed a plan). In that case, write `## Pattern Decisions\n\nNone — work is pattern-neutral.\n\nFit assessment: feature fits existing <subject>; no prep units required.` (the `Fit assessment:` line is required even here) rather than omitting the heading, so `/work` can still detect the marker structure.
 
 3. **Prep units when fit-friction fires.** When the `Fit assessment:` line names prep units, each one must:
 
