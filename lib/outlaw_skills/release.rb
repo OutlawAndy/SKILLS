@@ -153,10 +153,19 @@ module OutlawSkills
       run!("git", "-C", @root, "checkout", "--", *paths)
     end
 
+    # Removes untracked files/dirs under the given paths. Used in rollback so a
+    # failed release that rebuilt dist (possibly adding new files) leaves no
+    # orphaned artifacts behind — `git checkout --` only restores tracked files.
+    def clean_untracked(*paths)
+      run!("git", "-C", @root, "clean", "-fd", "--", *paths)
+    end
+
     private
 
     def capture(*args)
-      IO.popen(args, &:read).to_s
+      output = IO.popen(args, &:read)
+      raise ReleaseError, "command failed: #{args.join(' ')}" unless $?.success?
+      output.to_s
     end
 
     def run!(*args)
@@ -171,8 +180,11 @@ module OutlawSkills
       on_path? && authenticated?
     end
 
+    # Returns true on success, false on failure. The caller degrades gracefully
+    # on false (the tag is already pushed by then) rather than aborting, and gh's
+    # own stderr is inherited so the operator sees why it failed.
     def release_create(tag)
-      raise ReleaseError, "gh release create failed for #{tag}" unless system("gh", "release", "create", tag, "--generate-notes")
+      system("gh", "release", "create", tag, "--generate-notes")
     end
 
     # The exact command a developer runs by hand when gh wasn't usable.
@@ -305,8 +317,12 @@ module OutlawSkills
       end
 
       if @gh.available?
-        @gh.release_create(tag)
-        @out.puts "Created GitHub release #{tag}."
+        if @gh.release_create(tag)
+          @out.puts "Created GitHub release #{tag}."
+        else
+          @out.puts "gh release create failed — tag #{tag} is pushed; finish the release manually:"
+          @out.puts "  #{@gh.manual_command(tag)}"
+        end
       else
         @out.puts "gh unavailable or unauthenticated — tag #{tag} is pushed; create the release manually:"
         @out.puts "  #{@gh.manual_command(tag)}"
@@ -335,6 +351,7 @@ module OutlawSkills
 
     def rollback!
       @git.restore(*BUMP_PATHS)
+      @git.clean_untracked("dist")
     end
 
     def report_dry_run(current, next_version)
@@ -352,8 +369,7 @@ module OutlawSkills
 
     def default_build
       builder = Builder.new(root: @root)
-      builder.build_target("claude")
-      builder.build_target("copilot")
+      TARGETS.each { |target| builder.build_target(target) }
     end
   end
 
@@ -391,6 +407,6 @@ module OutlawSkills
       abort "release error: #{e.message}"
     end
 
-    def self.default_root = File.expand_path("../..", __dir__)
+    def self.default_root = CLI.default_root
   end
 end

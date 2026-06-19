@@ -57,6 +57,7 @@ class FakeGit
   def tag(name, message) = @calls << [:tag, name, message]
   def push(*refs) = @calls << [:push, *refs]
   def restore(*paths) = @calls << [:restore, *paths]
+  def clean_untracked(*paths) = @calls << [:clean_untracked, *paths]
 end
 
 class FakeTestGate
@@ -73,13 +74,19 @@ end
 class FakeGh
   attr_reader :calls
 
-  def initialize(available: true)
+  def initialize(available: true, release_ok: true)
     @available = available
+    @release_ok = release_ok
     @calls = []
   end
 
   def available? = @available
-  def release_create(tag) = @calls << [:release_create, tag]
+
+  def release_create(tag)
+    @calls << [:release_create, tag]
+    @release_ok
+  end
+
   def manual_command(tag) = "gh release create #{tag} --generate-notes"
 end
 
@@ -313,6 +320,8 @@ class ReleaserCoreTest < Minitest::Test
       assert_match(/rolled back/, error.message)
       assert_includes git.calls, [:restore, "VERSION", ".claude-plugin/marketplace.json", "dist"],
         "a failed test gate must restore the bump's tracked paths (R14)"
+      assert_includes git.calls, [:clean_untracked, "dist"],
+        "rollback must also remove untracked dist files a rebuild may have added (R14)"
     end
   end
 
@@ -400,6 +409,24 @@ class ReleaserPublishTest < Minitest::Test
 
       assert_includes git.calls, [:push, "main", "v0.1.1"]
       assert_empty gh.calls, "no gh release attempted when gh is unavailable"
+      assert_match(/gh release create v0.1.1 --generate-notes/, out.string)
+    end
+  end
+
+  def test_gh_release_failure_degrades_to_manual_command
+    Dir.mktmpdir do |dir|
+      write_repo_fixture(dir, "0.1.0")
+      git = FakeGit.new(clean: true, branch: "main")
+      gh = FakeGh.new(available: true, release_ok: false)
+      out = StringIO.new
+
+      # A failed `gh release create` must NOT abort — the tag is already pushed.
+      result = release(dir, git: git, gh: gh, out: out)
+
+      assert_equal "0.1.1", result
+      assert_includes git.calls, [:push, "main", "v0.1.1"]
+      assert_includes gh.calls, [:release_create, "v0.1.1"]
+      assert_match(/finish the release manually/, out.string)
       assert_match(/gh release create v0.1.1 --generate-notes/, out.string)
     end
   end
