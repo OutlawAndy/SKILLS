@@ -11,11 +11,12 @@ outlaw-skills/
     agents/            # reviewer/persona agents as plain markdown
   bin/
     build              # Ruby script that produces dist/*
+    release            # Ruby script that bumps the version, rebuilds, tags, and publishes a release
   lib/outlaw_skills/   # build logic
   dist/                # generated plugin distributions (checked in)
     claude/            # Claude Code plugin layout
     copilot/           # Copilot layout: .github/skills/ (native SKILL.md dirs), agents/, copilot-instructions.md
-  VERSION              # single source of version truth (semver, currently 0.1.0)
+  VERSION              # single source of version truth (semver; bump via bin/release)
   LICENSE              # MIT
   AGENTS.md            # this file
 ```
@@ -32,6 +33,29 @@ bin/build copilot      # builds dist/copilot/ only
 
 The build is idempotent — running it twice on unchanged source produces byte-identical output.
 
+## Release
+
+`bin/release` is the only sanctioned way to change the version. It bumps `VERSION`, syncs both version fields in `.claude-plugin/marketplace.json`, rebuilds `dist/`, runs the test suite, commits and tags `vX.Y.Z`, pushes, and creates a GitHub release.
+
+```sh
+bin/release patch            # 0.1.0 -> 0.1.1 (default level)
+bin/release minor            # 0.1.0 -> 0.2.0
+bin/release major            # 0.1.0 -> 1.0.0
+bin/release --dry-run        # preview the bump + release without changing anything
+bin/release --no-gh-release  # commit/tag/push but skip the GitHub release
+bin/release --override       # allow releasing from a branch other than main
+```
+
+Preconditions and behavior:
+
+- Refuses to run with uncommitted **tracked** changes (untracked scratch like `ref/` is ignored) — commit or stash first.
+- Refuses to run off `main` unless `--override` is passed, and aborts if the target `vX.Y.Z` tag already exists.
+- If the test suite fails (or collects zero tests), the bump is rolled back so the tree is left clean and the command is re-runnable.
+- If `gh` is missing or unauthenticated, the local commit/tag/push still complete and the exact `gh release create ...` command is printed to run by hand.
+- Do not hand-edit `VERSION` or the `marketplace.json` version fields — `bin/release` keeps all version locations in sync and a test asserts they agree.
+
+**Why a version bump is required:** Claude Code caches the installed plugin by version at `~/.claude/plugins/cache/outlaw-skills/outlaw-skills/<version>/` and serves that cached copy. Rebuilding `dist/` in place does **not** refresh a running install while the version is unchanged — the cache is keyed on the version string (alongside the recorded commit SHA). Bumping the version is what forces Claude Code to re-copy.
+
 ## Install
 
 After building, install the appropriate `dist/` into your tool.
@@ -47,7 +71,7 @@ The repo ships a local marketplace manifest at `.claude-plugin/marketplace.json`
 
 After the install, restart the session (or run `/plugin` to confirm). Upstream plugins (compound-engineering, layered-rails, ruby-lsp, microsoft-docs) remain installed alongside without modification — coexistence is the intentional MVP posture.
 
-To update after rebuilding: `bin/build claude` regenerates `dist/claude/` in place; Claude Code re-reads the plugin contents on session start. If skills or agents don't refresh, run `/plugin marketplace update outlaw-skills` and reinstall.
+To ship changes: run `bin/release <level>` (see [Release](#release)), then in Claude Code run `/plugin update outlaw-skills@outlaw-skills` or relaunch the session. A bare `bin/build claude` rebuild does **not** refresh a running install — Claude Code serves a version-keyed cached copy and only re-copies when the version changes, which is exactly what `bin/release` bumps.
 
 ### GitHub Copilot
 

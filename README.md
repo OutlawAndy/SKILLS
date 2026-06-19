@@ -26,6 +26,17 @@ Wire the built distributions into your tools:
 
 Full install details, target filtering, and the verification checklist live in [AGENTS.md](AGENTS.md).
 
+## Releasing & updating
+
+Cut a release with `bin/release` (bumps `VERSION`, syncs the marketplace manifest, rebuilds `dist/`, runs tests, tags `vX.Y.Z`, pushes, and creates a GitHub release):
+
+```sh
+bin/release patch        # or: minor | major
+bin/release --dry-run    # preview without changing anything
+```
+
+Claude Code caches the plugin by version, so a bare `bin/build` rebuild won't refresh a running install — you must bump the version with `bin/release`, then run `/plugin update outlaw-skills@outlaw-skills` (or relaunch). See [AGENTS.md](AGENTS.md#release) for preconditions and flags.
+
 ## Running the tests
 
 The test suite is plain Minitest with no Gemfile or Rakefile:
