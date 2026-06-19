@@ -127,6 +127,7 @@ Fire on judgment when the named topic surfaces. Not mandatory.
 
 Before proposing an implementation, ask yourself:
 
+- **Make the change easy, then make the easy change.** Am I about to bolt this onto a structure it doesn't fit naturally? If yes: name the structural prep refactor that would make the change land cleanly, do the prep first as its own commit (no behavior change), then do the now-easy change. This is Kent Beck's principle and it is the most upstream of the pressure tests below — many of the others (service-object reflex, custom controller action, custom routes) are downstream symptoms of skipping it.
 - **Is this CRUD?** If so, RESTful resource. If not, why not — and is the resource boundary wrong?
 - **Where does the logic want to live?** Model first. Justify moving it elsewhere.
 - **Am I about to add a callback?** Score it via `layered-rails`. Most callbacks lose.

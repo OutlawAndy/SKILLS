@@ -29,7 +29,8 @@ based_on: 'EveryInc/compound-engineering-plugin@ce-work'
 > 1. **Invoke `rails-context` via the Skill tool.** Posture and probe steps still apply to execution.
 > 2. **Read the plan's `pattern_skills_loaded` frontmatter list. Invoke each named skill via the Skill tool.** This reproduces, at execution time, the same pattern framing the planner used. Do not paraphrase from memory.
 > 3. **Read the plan's `## Pattern Decisions` section before designing any unit.** Treat its decisions as authoritative. If you find yourself disagreeing with a Pattern Decision during execution, stop and surface it to the user — do not silently override it.
-> 4. **Self-attest** with the block in Step 3 below, listing `mode: light` and the skills actually loaded.
+> 4. **Honor the `Fit assessment:` line.** Find the `Fit assessment:` line at the end of `## Pattern Decisions`. If it says `no prep units required`, proceed directly to the feature units. If it names prep units (`prep units U<n>–U<m>`), execute those prep units first as their own commit(s) before any feature unit. If the line is missing, fall back to the Heavy-Mode fit check (Phase 1) and surface the gap to the user — the plan was incomplete.
+> 5. **Self-attest** with the block in Step 3 below, listing `mode: light` and the skills actually loaded.
 >
 > Skip the heavy classify-and-load ceremony — the plan did it. Skip the "recommend `/plan`" step in Phase 1 — you are already running plan output.
 >
@@ -100,6 +101,8 @@ Determine how to proceed based on `<input_document>` and the mode established by
   | **Trivial** | 1–2 files, no behavioral change (typo, config, rename) | Skip task-list ceremony. Implement directly. Pre-flight gate still applies if any Ruby/Rails code is touched. |
   | **Small / Medium** | Clear scope, under ~10 files | Build a task list. Continue to Phase 2. |
   | **Large** | Cross-cutting, architectural decisions, 10+ files, touches auth/payments/migrations or anything touching layered-rails boundaries | Recommend `/plan` (Rails-aware) or `/ce-brainstorm` first. Honor user's choice; if proceeding, build a task list. |
+
+**Fit check (Heavy Mode, bare prompt and unmarked plan).** Before authoring, ask the "make the change easy, then make the easy change" question from `rails-context` §7. If the change would bolt onto an ill-fitting structure: when the prep is non-trivial (more than ~2 file moves, or it crosses `layered-rails` boundaries), stop and recommend `/plan` so prep units can be ordered explicitly. When the prep is trivial (1–2 mechanical moves), do the prep first and commit it separately before the feature change, so the diff reads as "make it easy / make the easy change" rather than one tangled commit.
 
 ---
 
@@ -182,6 +185,13 @@ For each task in priority order:
 ### Pressure tests (run silently)
 
 Use `rails-context` §7 before proposing each implementation. If a pressure test triggers, route to the relevant mandatory skill before continuing.
+
+**Mid-execution fit-friction.** The "make the change easy" test (§7's first bullet) fires *before* you write the change — when you notice the surrounding structure does not naturally accommodate it. Two responses:
+
+- **Trivial prep (1–2 mechanical moves):** pause, do the prep, commit it as a separate "refactor: …" commit, then continue with the now-easy feature change. Two commits, clean diff.
+- **Non-trivial prep (more than ~2 file moves, or crosses `layered-rails` boundaries):** pause and surface to the user — re-planning may be warranted before continuing, so prep units can be ordered explicitly via `/plan` rather than improvised mid-flight.
+
+Distinguish this from Phase 7 simplification: Phase 7 cleans up *after* a cluster of units ships. Fit-friction fires *before* a unit ships, when the structure rejects the change.
 
 ---
 

@@ -83,14 +83,31 @@ Before invoking, set these expectations for the plan output:
    - Cite which pattern skill rule drove it (e.g., "see `layered-rails` §callback scoring", "see `controller-patterns` standard controller")
    - Note any deviation from the pattern skill's default *and* the justification (deviations should be rare)
 
-   Skip this section only when the plan is genuinely pattern-trivial (e.g., a typo fix that somehow needed a plan). In that case, write `## Pattern Decisions\n\nNone — work is pattern-neutral.` rather than omitting the heading, so `/work` can still detect the marker structure.
+   Additionally, every `## Pattern Decisions` section must end with a mandatory `Fit assessment:` line (literal prefix, for grep-ability) that takes one of two shapes:
 
-3. **Per-unit `Patterns to follow`.** `ce-plan` already supports this field. Require it to be populated with skill-grounded references (e.g., "Mirror `controller-patterns` standard `set_*` before_action structure"), not generic phrases like "follow existing conventions".
+   - `Fit assessment: feature fits existing <subject>; no prep units required.`
+   - `Fit assessment: prep units U<n>–U<m> ordered before feature unit(s) U<x>. <one-line rationale>.`
+
+   This line is required even when no Pattern Decisions exist — it forces an explicit fit-friction check before planning concludes.
+
+   Skip this section only when the plan is genuinely pattern-trivial (e.g., a typo fix that somehow needed a plan). In that case, write `## Pattern Decisions\n\nNone — work is pattern-neutral.\n\nFit assessment: feature fits existing <subject>; no prep units required.` (the `Fit assessment:` line is required even here) rather than omitting the heading, so `/work` can still detect the marker structure.
+
+3. **Prep units when fit-friction fires.** When the `Fit assessment:` line names prep units, each one must:
+
+   - Have its own U-ID, ordered before the feature unit(s) it enables.
+   - State in its `Verification`: "no behavior change" (or a more specific characterization-test verification).
+   - Populate its `Patterns to follow` field like any other unit.
+   - Be referenced by U-ID in the `Fit assessment:` line.
+
+   Do not inline structural prep into a feature unit — that defeats the "make the change easy, then make the easy change" separation and produces commits that mix refactor with behavior change.
+
+4. **Per-unit `Patterns to follow`.** `ce-plan` already supports this field. Require it to be populated with skill-grounded references (e.g., "Mirror `controller-patterns` standard `set_*` before_action structure"), not generic phrases like "follow existing conventions".
 
 ### Pressure tests during planning
 
 While `ce-plan` runs, apply these silently. If any trigger, surface the decision in `## Pattern Decisions` rather than letting `/work` rediscover it later:
 
+- **Bolt-on fit friction** — any plan whose feature units add behavior to a structure that doesn't fit them naturally. Apply `rails-context` §7's "make the change easy" test. If it fires, add prep units and document them in the `Fit assessment:` line.
 - **Callback creep** — any plan to add an `after_save` / `after_commit` that orchestrates business operations. Score the callback per `layered-rails` and prefer a domain method or operation.
 - **Service-object reflex** — any plan to introduce `app/services/` for logic the model could own. Justify or relocate.
 - **Custom routes** — any plan that adds non-RESTful routes. Justify or restructure.
