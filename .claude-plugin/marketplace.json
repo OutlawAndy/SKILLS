@@ -6,13 +6,13 @@
   },
   "metadata": {
     "description": "Personal cross-tool layer of AI coding-agent skills and reviewer personas.",
-    "version": "0.1.0"
+    "version": "0.1.1"
   },
   "plugins": [
     {
       "name": "outlaw-skills",
       "description": "Personal cross-tool layer of AI coding-agent skills and reviewer personas.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "author": {
         "name": "Andy Cohen"
       },

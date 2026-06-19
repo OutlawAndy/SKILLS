@@ -36,4 +36,4 @@ Canonical source lives in the outlaw-skills repo under `src/`. The build
 script (`bin/build copilot`) is the only thing that should write to this
 directory.
 
-Generated from outlaw-skills v0.1.0.
+Generated from outlaw-skills v0.1.1.
