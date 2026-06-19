@@ -164,6 +164,33 @@ module OutlawSkills
     end
   end
 
+  # Thin GitHub-CLI wrapper, injectable for tests. Degrades gracefully: the
+  # release completes locally even when gh is missing or unauthenticated.
+  class Gh
+    def available?
+      on_path? && authenticated?
+    end
+
+    def release_create(tag)
+      raise ReleaseError, "gh release create failed for #{tag}" unless system("gh", "release", "create", tag, "--generate-notes")
+    end
+
+    # The exact command a developer runs by hand when gh wasn't usable.
+    def manual_command(tag)
+      "gh release create #{tag} --generate-notes"
+    end
+
+    private
+
+    def on_path?
+      system("command -v gh > /dev/null 2>&1")
+    end
+
+    def authenticated?
+      system("gh", "auth", "status", out: File::NULL, err: File::NULL)
+    end
+  end
+
   # Runs the project test suite the only way it collects tests: with test/ as
   # the working directory (test_helper.rb globs ./*_test.rb relatively). Treats
   # a zero-tests-collected result as failure so the gate cannot false-green.
@@ -192,14 +219,19 @@ module OutlawSkills
   class Releaser
     BUMP_PATHS = ["VERSION", ".claude-plugin/marketplace.json", "dist"].freeze
 
-    def initialize(root:, level: "patch", dry_run: false, out: $stdout,
-                   git: nil, test_gate: nil, build: nil)
+    def initialize(root:, level: "patch", dry_run: false, gh_release: true,
+                   override_branch: false, release_branch: "main", out: $stdout,
+                   git: nil, gh: nil, test_gate: nil, build: nil)
       @root = root
       @level = level
       @dry_run = dry_run
+      @gh_release = gh_release
+      @override_branch = override_branch
+      @release_branch = release_branch
       @out = out
       @locations = VersionLocations.new(root: root)
       @git = git || Git.new(root: root)
+      @gh = gh || Gh.new
       @test_gate = test_gate || TestGate.new(root: root)
       @build = build || method(:default_build)
     end
@@ -216,9 +248,14 @@ module OutlawSkills
       end
 
       ensure_clean_tree!
+      ensure_release_branch!
+      ensure_tag_available!(next_version)
+
       apply_version(next_version)
       run_test_gate!(next_version)
-      @out.puts "Prepared and verified v#{next_version} (VERSION, marketplace.json synced, dist rebuilt)."
+      commit_and_tag(next_version)
+      publish(next_version)
+      print_refresh(next_version)
       next_version
     end
 
@@ -234,6 +271,53 @@ module OutlawSkills
       raise ReleaseError,
         "working tree has uncommitted tracked changes — commit or stash them first " \
         "(untracked files like ref/ do not block)"
+    end
+
+    def ensure_release_branch!
+      return if @override_branch
+      branch = @git.current_branch
+      return if branch == @release_branch
+      raise ReleaseError,
+        "on branch #{branch.inspect}, not the release branch #{@release_branch.inspect} — " \
+        "switch to #{@release_branch} or pass --override"
+    end
+
+    def ensure_tag_available!(version)
+      tag = "v#{version}"
+      return unless @git.tag_exists?(tag)
+      raise ReleaseError, "tag #{tag} already exists — v#{version} appears already released"
+    end
+
+    def commit_and_tag(version)
+      tag = "v#{version}"
+      @git.add(*BUMP_PATHS)
+      @git.commit("chore(release): v#{version}")
+      @git.tag(tag, "Release v#{version}")
+    end
+
+    def publish(version)
+      tag = "v#{version}"
+      @git.push(@git.current_branch, tag)
+
+      unless @gh_release
+        @out.puts "Skipped GitHub release (--no-gh-release). Tag #{tag} pushed."
+        return
+      end
+
+      if @gh.available?
+        @gh.release_create(tag)
+        @out.puts "Created GitHub release #{tag}."
+      else
+        @out.puts "gh unavailable or unauthenticated — tag #{tag} is pushed; create the release manually:"
+        @out.puts "  #{@gh.manual_command(tag)}"
+      end
+    end
+
+    def print_refresh(version)
+      @out.puts ""
+      @out.puts "Released v#{version}. To refresh Claude Code's cached copy:"
+      @out.puts "  /plugin update outlaw-skills@outlaw-skills"
+      @out.puts "or relaunch your Claude Code session."
     end
 
     def apply_version(next_version)
@@ -254,9 +338,15 @@ module OutlawSkills
     end
 
     def report_dry_run(current, next_version)
+      tag = "v#{next_version}"
+      branch = @git.current_branch
+      branch_note = @override_branch ? "#{branch} (override on)" : "#{branch} (release branch: #{@release_branch})"
+      release_note = @gh_release ? "#{@gh.manual_command(tag)}" : "skip GitHub release"
       @out.puts "[dry-run] would bump #{current} -> #{next_version}"
       @out.puts "[dry-run] would write: #{BUMP_PATHS.join(', ')} (after rebuild)"
       @out.puts "[dry-run] tracked tree is #{@git.clean_tracked? ? 'clean' : 'DIRTY — a real run would abort until committed/stashed'}"
+      @out.puts "[dry-run] branch: #{branch_note}"
+      @out.puts "[dry-run] would commit + tag #{tag} + push, then: #{release_note}"
       @out.puts "[dry-run] no files, git, or GitHub changes made"
     end
 
@@ -270,26 +360,33 @@ module OutlawSkills
   # CLI entry used by bin/release.
   module ReleaseCLI
     USAGE = <<~TEXT.freeze
-      Usage: bin/release [major|minor|patch] [--dry-run]
+      Usage: bin/release [major|minor|patch] [--dry-run] [--no-gh-release] [--override]
 
         major|minor|patch   semver level to bump (default: patch)
-        --dry-run           report the planned bump without changing anything
+        --dry-run           report the planned release without changing anything
+        --no-gh-release     commit, tag, and push, but skip creating the GitHub release
+        --override          allow releasing from a branch other than main
     TEXT
 
     def self.run(argv, root: default_root, out: $stdout)
       level = "patch"
       dry_run = false
+      gh_release = true
+      override_branch = false
 
       argv.each do |arg|
         case arg
         when "major", "minor", "patch" then level = arg
         when "--dry-run" then dry_run = true
+        when "--no-gh-release" then gh_release = false
+        when "--override" then override_branch = true
         when "-h", "--help" then out.puts(USAGE); return
         else abort "unknown argument: #{arg.inspect}\n#{USAGE}"
         end
       end
 
-      Releaser.new(root: root, level: level, dry_run: dry_run, out: out).run
+      Releaser.new(root: root, level: level, dry_run: dry_run, gh_release: gh_release,
+                   override_branch: override_branch, out: out).run
     rescue ReleaseError => e
       abort "release error: #{e.message}"
     end

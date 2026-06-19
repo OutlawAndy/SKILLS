@@ -70,6 +70,19 @@ class FakeTestGate
   def pass? = @pass
 end
 
+class FakeGh
+  attr_reader :calls
+
+  def initialize(available: true)
+    @available = available
+    @calls = []
+  end
+
+  def available? = @available
+  def release_create(tag) = @calls << [:release_create, tag]
+  def manual_command(tag) = "gh release create #{tag} --generate-notes"
+end
+
 # --- U1: version locations / invariant ----------------------------------------
 
 class ReleaseVersionLocationsTest < Minitest::Test
@@ -269,13 +282,14 @@ class ReleaserCoreTest < Minitest::Test
     end
   end
 
-  def test_successful_prepare_applies_and_keeps_invariant
+  def test_successful_bump_applies_and_keeps_invariant
     Dir.mktmpdir do |dir|
       write_repo_fixture(dir, "0.1.0")
 
       OutlawSkills::Releaser.new(
         root: dir, level: "minor", out: StringIO.new,
-        git: FakeGit.new(clean: true), test_gate: FakeTestGate.new(pass: true), build: stamping_build(dir)
+        git: FakeGit.new(clean: true), gh: FakeGh.new(available: false),
+        test_gate: FakeTestGate.new(pass: true), build: stamping_build(dir)
       ).run
 
       locations = OutlawSkills::VersionLocations.new(root: dir)
@@ -308,5 +322,123 @@ class ReleaserCoreTest < Minitest::Test
     Dir.glob("#{dir}/**/*", File::FNM_DOTMATCH).select { |p| File.file?(p) }.sort.to_h do |p|
       [p.sub(dir, ""), File.read(p)]
     end
+  end
+end
+
+# --- U3: publishing (branch guard, commit, tag, push, gh release) -------------
+
+class ReleaserPublishTest < Minitest::Test
+  include ReleaseFixtures
+
+  def test_happy_path_commits_tags_pushes_and_releases
+    Dir.mktmpdir do |dir|
+      write_repo_fixture(dir, "0.1.0")
+      git = FakeGit.new(clean: true, branch: "main")
+      gh = FakeGh.new(available: true)
+      out = StringIO.new
+
+      result = release(dir, git: git, gh: gh, out: out)
+
+      assert_equal "0.1.1", result
+      assert_includes git.calls, [:add, "VERSION", ".claude-plugin/marketplace.json", "dist"]
+      assert_includes git.calls, [:commit, "chore(release): v0.1.1"]
+      assert_includes git.calls, [:tag, "v0.1.1", "Release v0.1.1"]
+      assert_includes git.calls, [:push, "main", "v0.1.1"]
+      assert_includes gh.calls, [:release_create, "v0.1.1"]
+      assert_match(%r{/plugin update outlaw-skills@outlaw-skills}, out.string)
+    end
+  end
+
+  def test_branch_guard_blocks_non_release_branch
+    Dir.mktmpdir do |dir|
+      write_repo_fixture(dir, "0.1.0")
+      snapshot = File.read(File.join(dir, "VERSION"))
+      git = FakeGit.new(clean: true, branch: "feat/x")
+
+      error = assert_raises(OutlawSkills::ReleaseError) { release(dir, git: git, gh: FakeGh.new) }
+
+      assert_match(/release branch/, error.message)
+      assert_empty git.calls, "no git mutation before the branch guard passes"
+      assert_equal snapshot, File.read(File.join(dir, "VERSION")), "no bump before branch guard passes"
+    end
+  end
+
+  def test_override_allows_non_release_branch
+    Dir.mktmpdir do |dir|
+      write_repo_fixture(dir, "0.1.0")
+      git = FakeGit.new(clean: true, branch: "feat/x")
+
+      result = release(dir, git: git, gh: FakeGh.new(available: true), override_branch: true)
+
+      assert_equal "0.1.1", result
+      assert_includes git.calls, [:push, "feat/x", "v0.1.1"]
+    end
+  end
+
+  def test_existing_tag_aborts_before_mutation
+    Dir.mktmpdir do |dir|
+      write_repo_fixture(dir, "0.1.0")
+      snapshot = File.read(File.join(dir, "VERSION"))
+      git = FakeGit.new(clean: true, branch: "main", tag_exists: true)
+
+      error = assert_raises(OutlawSkills::ReleaseError) { release(dir, git: git, gh: FakeGh.new) }
+
+      assert_match(/already exists/, error.message)
+      assert_empty git.calls
+      assert_equal snapshot, File.read(File.join(dir, "VERSION"))
+    end
+  end
+
+  def test_gh_absent_pushes_and_prints_manual_command
+    Dir.mktmpdir do |dir|
+      write_repo_fixture(dir, "0.1.0")
+      git = FakeGit.new(clean: true, branch: "main")
+      gh = FakeGh.new(available: false)
+      out = StringIO.new
+
+      release(dir, git: git, gh: gh, out: out)
+
+      assert_includes git.calls, [:push, "main", "v0.1.1"]
+      assert_empty gh.calls, "no gh release attempted when gh is unavailable"
+      assert_match(/gh release create v0.1.1 --generate-notes/, out.string)
+    end
+  end
+
+  def test_no_gh_release_flag_skips_release
+    Dir.mktmpdir do |dir|
+      write_repo_fixture(dir, "0.1.0")
+      git = FakeGit.new(clean: true, branch: "main")
+      gh = FakeGh.new(available: true)
+      out = StringIO.new
+
+      release(dir, git: git, gh: gh, out: out, gh_release: false)
+
+      assert_includes git.calls, [:push, "main", "v0.1.1"]
+      assert_empty gh.calls, "--no-gh-release must skip the GitHub release"
+      assert_match(/Skipped GitHub release/, out.string)
+    end
+  end
+
+  def test_dry_run_makes_no_git_or_gh_calls
+    Dir.mktmpdir do |dir|
+      write_repo_fixture(dir, "0.1.0")
+      git = FakeGit.new(clean: true, branch: "main")
+      gh = FakeGh.new(available: true)
+
+      release(dir, git: git, gh: gh, dry_run: true)
+
+      assert_empty git.calls, "dry-run must not stage, commit, tag, or push"
+      assert_empty gh.calls, "dry-run must not create a GitHub release"
+    end
+  end
+
+  private
+
+  def release(dir, git:, gh:, out: StringIO.new, dry_run: false, gh_release: true, override_branch: false)
+    OutlawSkills::Releaser.new(
+      root: dir, level: "patch", dry_run: dry_run, gh_release: gh_release,
+      override_branch: override_branch, out: out,
+      git: git, gh: gh, test_gate: FakeTestGate.new(pass: true), build: stamping_build(dir)
+    ).run
   end
 end
