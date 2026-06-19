@@ -193,7 +193,7 @@ Workflow:
 
 ```bash
 # 1. Verify tests pass
-bin/rails test  # or bundle exec rspec, etc.
+bundle exec rspec  # or bin/rails test, etc.
 
 # 2. Stage only files for this logical unit (not git add .)
 git add <files for this unit>
