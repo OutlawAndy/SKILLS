@@ -19,8 +19,8 @@ bin/build   # builds the single dist/plugin/ tree
 
 Wire the built distribution into your tools — both install from `dist/plugin/` via their own marketplace manifest:
 
-- **Claude Code:** in any session, run `/plugin marketplace add /absolute/path/to/outlaw-skills` then `/plugin install outlaw-skills@outlaw-skills`, and restart.
-- **GitHub Copilot CLI:** `copilot plugin marketplace add /absolute/path/to/outlaw-skills` then `copilot plugin install outlaw-skills@outlaw-skills`. Copilot reads the open Agent Skills (`SKILL.md`) format natively, so skills are copied verbatim — no conversion — and auto-activate by description.
+- **Claude Code:** in any session, run `/plugin marketplace add OutlawAndy/SKILLS` then `/plugin install outlaw-skills@outlaw-skills`, and restart.
+- **GitHub Copilot CLI:** `copilot plugin marketplace add OutlawAndy/SKILLS` then `copilot plugin install outlaw-skills@outlaw-skills`. Copilot reads the open Agent Skills (`SKILL.md`) format natively, so skills are copied verbatim — no conversion — and auto-activate by description.
 
 Full install details, the hook caveat, and the verification checklist live in [AGENTS.md](AGENTS.md).
 
