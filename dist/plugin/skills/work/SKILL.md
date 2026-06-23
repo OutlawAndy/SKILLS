@@ -66,7 +66,7 @@ based_on: 'EveryInc/compound-engineering-plugin@ce-work'
 > - Loaded skills: <comma-separated skill names>  # must include rails-context
 > ```
 >
-> If the acknowledgment block is missing, the gate is not passed. A hook-based gate (`bin/install` in outlaw-skills) may additionally block your Edit/Write calls on Rails-shaped paths until the relevant skill has been loaded this session.
+> If the acknowledgment block is missing, the gate is not passed. A hook-based gate (shipped as the plugin's `hooks/hooks.json`, which runs `hooks/rails-gate.sh`) may additionally block your Edit/Write calls on Rails-shaped paths until the relevant skill has been loaded this session.
 >
 > ### When the gate does NOT apply
 >

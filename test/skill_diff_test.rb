@@ -2,20 +2,18 @@ require_relative "test_helper"
 require "fileutils"
 require "tmpdir"
 
-# Covers the skill-diff skill: it builds into both targets with its bundled
-# script intact, the pure tiered matcher resolves the right upstream dir
+# Covers the skill-diff skill: it builds into the single dist tree with its
+# bundled script intact, the pure tiered matcher resolves the right upstream dir
 # offline, and the resolver handles the no-upstream / bad-input cases cleanly.
 # Network-dependent paths (live `gh` resolution + fetch) are intentionally not
 # exercised here so the suite stays green offline.
 class SkillDiffTest < Minitest::Test
-  CLAUDE_DIST  = File.join(ROOT, "dist", "claude")
-  COPILOT_DIST = File.join(ROOT, "dist", "copilot")
-  SCRIPT       = File.join(ROOT, "src", "skills", "skill-diff", "scripts", "compare.sh")
+  DIST   = File.join(ROOT, "dist", "plugin")
+  SCRIPT = File.join(ROOT, "src", "skills", "skill-diff", "scripts", "compare.sh")
 
   def setup
     @builder = OutlawSkills::Builder.new(root: ROOT)
-    @builder.build_target("claude")
-    @builder.build_target("copilot")
+    @builder.build
   end
 
   # --- build / structure ----------------------------------------------------
@@ -32,13 +30,10 @@ class SkillDiffTest < Minitest::Test
       "skill-diff SKILL.md must carry a non-empty description"
   end
 
-  def test_bundled_script_ships_to_both_targets_executable
-    claude_script  = File.join(CLAUDE_DIST,  "skills", "skill-diff", "scripts", "compare.sh")
-    copilot_script = File.join(COPILOT_DIST, ".github", "skills", "skill-diff", "scripts", "compare.sh")
-    assert File.exist?(claude_script),  "expected compare.sh in claude dist"
-    assert File.exist?(copilot_script), "expected compare.sh in copilot dist"
-    assert File.executable?(claude_script),  "compare.sh should keep its executable bit in claude dist"
-    assert File.executable?(copilot_script), "compare.sh should keep its executable bit in copilot dist"
+  def test_bundled_script_ships_executable
+    script = File.join(DIST, "skills", "skill-diff", "scripts", "compare.sh")
+    assert File.exist?(script), "expected compare.sh in dist"
+    assert File.executable?(script), "compare.sh should keep its executable bit in dist"
   end
 
   # --- pure matcher (offline, via --match-only stdin seam) ------------------

@@ -4,91 +4,88 @@ require "fileutils"
 require "tmpdir"
 
 class BuilderTest < Minitest::Test
-  CLAUDE_DIST = File.join(ROOT, "dist", "claude")
+  DIST = File.join(ROOT, "dist", "plugin")
 
   def setup
     @builder = OutlawSkills::Builder.new(root: ROOT)
-    @builder.build_target("claude")
+    @builder.build
   end
 
-  # Happy path: Covers AE1 (build emits valid plugin from the U2 corpus).
-  def test_claude_manifest_exists_with_correct_identity
-    manifest_path = File.join(CLAUDE_DIST, ".claude-plugin", "plugin.json")
+  # Happy path: the single tree carries a valid manifest with correct identity.
+  def test_manifest_exists_with_correct_identity
+    manifest_path = File.join(DIST, ".claude-plugin", "plugin.json")
     assert File.exist?(manifest_path), "expected manifest at #{manifest_path}"
     manifest = JSON.parse(File.read(manifest_path))
     assert_equal "outlaw-skills", manifest["name"]
     assert_equal File.read(File.join(ROOT, "VERSION")).strip, manifest["version"]
     assert_equal "MIT", manifest["license"]
     assert manifest["description"].is_a?(String) && !manifest["description"].empty?
+    # `category` belongs in the marketplace entry, not plugin.json (Claude warns otherwise).
+    refute manifest.key?("category"), "category must not appear in plugin.json"
   end
 
   def test_skills_appear_in_dist
     %w[controller-patterns find-skills ruby-version].each do |skill|
-      assert File.exist?(File.join(CLAUDE_DIST, "skills", skill, "SKILL.md")),
+      assert File.exist?(File.join(DIST, "skills", skill, "SKILL.md")),
         "expected #{skill}/SKILL.md in dist"
     end
   end
 
-  # skill-audit ships to both targets verbatim (SKILL.md + references/) and is
-  # listed in the Copilot always-on digest.
-  def test_skill_audit_builds_into_both_targets_and_digest
-    @builder.build_target("copilot")
-    copilot_dist = File.join(ROOT, "dist", "copilot")
-
-    assert File.exist?(File.join(CLAUDE_DIST, "skills", "skill-audit", "SKILL.md")),
-      "expected skill-audit/SKILL.md in claude dist"
-    assert File.exist?(File.join(copilot_dist, ".github", "skills", "skill-audit", "SKILL.md")),
-      "expected skill-audit/SKILL.md in copilot dist"
-
+  # skill-audit ships verbatim — SKILL.md plus its full references/ set.
+  def test_skill_audit_ships_with_references
+    assert File.exist?(File.join(DIST, "skills", "skill-audit", "SKILL.md"))
     %w[decomposition lens-contradiction lens-redundancy lens-dilution load-bearing-guard output-format].each do |ref|
-      assert File.exist?(File.join(CLAUDE_DIST, "skills", "skill-audit", "references", "#{ref}.md")),
-        "expected skill-audit/references/#{ref}.md in claude dist"
-      assert File.exist?(File.join(copilot_dist, ".github", "skills", "skill-audit", "references", "#{ref}.md")),
-        "expected skill-audit/references/#{ref}.md in copilot dist"
+      assert File.exist?(File.join(DIST, "skills", "skill-audit", "references", "#{ref}.md")),
+        "expected skill-audit/references/#{ref}.md in dist"
     end
-
-    digest = File.read(File.join(copilot_dist, ".github", "copilot-instructions.md"))
-    assert_includes digest, "skill-audit"
   end
 
-  # md-audit ships to both targets verbatim (SKILL.md + references/, including
-  # the bundled non-dot markdownlint-cli2 config) and is listed in the digest.
-  def test_md_audit_builds_into_both_targets_and_digest
-    @builder.build_target("copilot")
-    copilot_dist = File.join(ROOT, "dist", "copilot")
-
-    assert File.exist?(File.join(CLAUDE_DIST, "skills", "md-audit", "SKILL.md")),
-      "expected md-audit/SKILL.md in claude dist"
-    assert File.exist?(File.join(copilot_dist, ".github", "skills", "md-audit", "SKILL.md")),
-      "expected md-audit/SKILL.md in copilot dist"
-
+  # md-audit ships verbatim, including the bundled non-dot markdownlint config.
+  def test_md_audit_ships_with_references
+    assert File.exist?(File.join(DIST, "skills", "md-audit", "SKILL.md"))
     %w[safe-formatting.md typo-gate.md markdownlint-cli2.jsonc].each do |ref|
-      assert File.exist?(File.join(CLAUDE_DIST, "skills", "md-audit", "references", ref)),
-        "expected md-audit/references/#{ref} in claude dist"
-      assert File.exist?(File.join(copilot_dist, ".github", "skills", "md-audit", "references", ref)),
-        "expected md-audit/references/#{ref} in copilot dist"
+      assert File.exist?(File.join(DIST, "skills", "md-audit", "references", ref)),
+        "expected md-audit/references/#{ref} in dist"
     end
-
-    digest = File.read(File.join(copilot_dist, ".github", "copilot-instructions.md"))
-    assert_includes digest, "md-audit"
   end
 
   def test_ruby_version_subdirectory_assets_copied
-    assert File.exist?(File.join(CLAUDE_DIST, "skills", "ruby-version", "scripts", "check.sh"))
-    assert File.exist?(File.join(CLAUDE_DIST, "skills", "ruby-version", "scripts", "install.sh"))
+    assert File.exist?(File.join(DIST, "skills", "ruby-version", "scripts", "check.sh"))
+    assert File.exist?(File.join(DIST, "skills", "ruby-version", "scripts", "install.sh"))
   end
 
-  def test_agents_appear_in_dist
+  # Agents are copied verbatim — no tool-name translation, no frontmatter rewrite.
+  def test_agents_appear_in_dist_verbatim
     %w[dhh-rails-reviewer kieran-rails-reviewer].each do |agent|
-      assert File.exist?(File.join(CLAUDE_DIST, "agents", "#{agent}.agent.md")),
-        "expected #{agent}.agent.md in dist"
+      dest = File.join(DIST, "agents", "#{agent}.agent.md")
+      assert File.exist?(dest), "expected #{agent}.agent.md in dist"
+      assert_equal File.read(File.join(ROOT, "src", "agents", "#{agent}.agent.md")),
+                   File.read(dest), "agent must be copied verbatim (no translation)"
     end
+  end
+
+  # The plugin-native hook ships at the default hooks/ location, executable.
+  def test_hook_ships_and_is_executable
+    hooks_json = File.join(DIST, "hooks", "hooks.json")
+    script = File.join(DIST, "hooks", "rails-gate.sh")
+    assert File.exist?(hooks_json), "expected hooks/hooks.json in dist"
+    assert JSON.parse(File.read(hooks_json)).dig("hooks", "PreToolUse"),
+      "hooks.json must declare a PreToolUse hook"
+    assert File.exist?(script), "expected hooks/rails-gate.sh in dist"
+    assert File.executable?(script), "hook script must be executable"
   end
 
   def test_root_files_copied_to_dist
     %w[AGENTS.md LICENSE].each do |f|
-      assert File.exist?(File.join(CLAUDE_DIST, f)), "expected #{f} in dist root"
+      assert File.exist?(File.join(DIST, f)), "expected #{f} in dist root"
     end
+  end
+
+  # The old VS-Code-era Copilot layout must never reappear in the single tree.
+  def test_no_legacy_vscode_artifacts
+    refute File.exist?(File.join(DIST, ".github")), ".github layout must not be emitted"
+    refute File.exist?(File.join(DIST, "copilot-instructions.md")), "copilot-instructions.md must not be emitted"
+    refute File.exist?(File.join(DIST, "README.md")), "generated README must not be emitted"
   end
 
   # Edge case: empty src/skills/ -> valid plugin with zero skills (manifest still valid).
@@ -97,12 +94,11 @@ class BuilderTest < Minitest::Test
       FileUtils.mkdir_p(File.join(tmp, "src", "skills"))
       FileUtils.mkdir_p(File.join(tmp, "src", "agents"))
       File.write(File.join(tmp, "VERSION"), "0.1.0\n")
-      builder = OutlawSkills::Builder.new(root: tmp)
-      builder.build_target("claude")
+      OutlawSkills::Builder.new(root: tmp).build
 
-      manifest = JSON.parse(File.read(File.join(tmp, "dist", "claude", ".claude-plugin", "plugin.json")))
+      manifest = JSON.parse(File.read(File.join(tmp, "dist", "plugin", ".claude-plugin", "plugin.json")))
       assert_equal "outlaw-skills", manifest["name"]
-      refute File.directory?(File.join(tmp, "dist", "claude", "skills")),
+      refute File.directory?(File.join(tmp, "dist", "plugin", "skills")),
         "empty skills source should not produce a dist skills/ directory"
     end
   end

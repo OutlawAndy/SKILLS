@@ -11,24 +11,22 @@ e.g. /work
 
 ## Quick start
 
-The `dist` directory already contains prebuilt plugins for all supported targets. Though they are not available on any official marketplace currently.  So you'll need to clone this repo and then run `bin/install --target=<DESIRED-TARGET>` to setup global (user level) symlinks in the appropriate location.
+The `dist/plugin/` directory holds a prebuilt plugin consumed by both Claude Code and GitHub Copilot CLI. It is not on any official marketplace, so clone this repo and install from its local marketplace manifest. Rebuild with `bin/build` if you change anything under `src/`.
 
 ```sh
-bin/build                     # builds dist/claude/ and dist/copilot/
-bin/install                   # installs the Claude Code Rails PreToolUse hook
-bin/install --target=copilot  # symlinks the Copilot dist into VS Code
+bin/build   # builds the single dist/plugin/ tree
 ```
 
-Wire the built distributions into your tools:
+Wire the built distribution into your tools — both install from `dist/plugin/` via their own marketplace manifest:
 
 - **Claude Code:** in any session, run `/plugin marketplace add /absolute/path/to/outlaw-skills` then `/plugin install outlaw-skills@outlaw-skills`, and restart.
-- **GitHub Copilot (VS Code):** `bin/install --target=copilot` symlinks each skill directory into `$HOME/.copilot/skills/` and `*.agent.md` into `$HOME/.copilot/agents/`. Copilot reads the open Agent Skills (`SKILL.md`) format natively, so skills are copied verbatim — no conversion — and auto-activate by description (re-run after `bin/build` is unnecessary — symlinks flow through). Reload the VS Code window afterward.
+- **GitHub Copilot CLI:** `copilot plugin marketplace add /absolute/path/to/outlaw-skills` then `copilot plugin install outlaw-skills@outlaw-skills`. Copilot reads the open Agent Skills (`SKILL.md`) format natively, so skills are copied verbatim — no conversion — and auto-activate by description.
 
-Full install details, target filtering, and the verification checklist live in [AGENTS.md](AGENTS.md).
+Full install details, the hook caveat, and the verification checklist live in [AGENTS.md](AGENTS.md).
 
 ## Releasing & updating
 
-Cut a release with `bin/release` (bumps `VERSION`, syncs the marketplace manifest, rebuilds `dist/`, runs tests, tags `vX.Y.Z`, pushes, and creates a GitHub release):
+Cut a release with `bin/release` (bumps `VERSION`, syncs both marketplace manifests, rebuilds `dist/plugin/`, runs tests, tags `vX.Y.Z`, pushes, and creates a GitHub release):
 
 ```sh
 bin/release patch        # or: minor | major
@@ -45,7 +43,7 @@ The test suite is plain Minitest with no Gemfile or Rakefile:
 minitest
 ```
 
-Tests cover the build pipeline, target filtering, the Copilot target, and build idempotency.
+Tests cover the build pipeline, the single-tree output (skills, agents, hooks), build idempotency, and the release version-sync invariant.
 
 ## License
 

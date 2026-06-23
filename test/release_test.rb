@@ -11,16 +11,21 @@ module ReleaseFixtures
   def write_repo_fixture(dir, version)
     File.write(File.join(dir, "VERSION"), "#{version}\n")
 
-    plugin_dir = File.join(dir, ".claude-plugin")
-    FileUtils.mkdir_p(plugin_dir)
     marketplace = {
       "name" => "outlaw-skills",
       "metadata" => { "description" => "x", "version" => version },
-      "plugins" => [{ "name" => "outlaw-skills", "version" => version, "source" => "./dist/claude" }]
+      "plugins" => [{ "name" => "outlaw-skills", "version" => version, "source" => "./dist/plugin" }]
     }
-    File.write(File.join(plugin_dir, "marketplace.json"), JSON.pretty_generate(marketplace) + "\n")
+    # Both marketplace manifests carry their own copy of the version and must stay in sync.
+    claude_dir = File.join(dir, ".claude-plugin")
+    FileUtils.mkdir_p(claude_dir)
+    File.write(File.join(claude_dir, "marketplace.json"), JSON.pretty_generate(marketplace) + "\n")
 
-    dist_plugin_dir = File.join(dir, "dist", "claude", ".claude-plugin")
+    gh_dir = File.join(dir, ".github", "plugin")
+    FileUtils.mkdir_p(gh_dir)
+    File.write(File.join(gh_dir, "marketplace.json"), JSON.pretty_generate(marketplace) + "\n")
+
+    dist_plugin_dir = File.join(dir, "dist", "plugin", ".claude-plugin")
     FileUtils.mkdir_p(dist_plugin_dir)
     File.write(File.join(dist_plugin_dir, "plugin.json"),
                JSON.pretty_generate({ "name" => "outlaw-skills", "version" => version }) + "\n")
@@ -31,7 +36,7 @@ module ReleaseFixtures
   def stamping_build(dir)
     lambda do
       version = File.read(File.join(dir, "VERSION")).strip
-      path = File.join(dir, "dist", "claude", ".claude-plugin", "plugin.json")
+      path = File.join(dir, "dist", "plugin", ".claude-plugin", "plugin.json")
       data = JSON.parse(File.read(path))
       data["version"] = version
       File.write(path, JSON.pretty_generate(data) + "\n")
@@ -107,9 +112,13 @@ class ReleaseVersionLocationsTest < Minitest::Test
       write_repo_fixture(dir, "1.2.3")
       locations = OutlawSkills::VersionLocations.new(root: dir)
       assert_equal "1.2.3", locations.version_file
-      assert_equal "1.2.3", locations.marketplace_metadata_version
-      assert_equal "1.2.3", locations.marketplace_plugin_version
       assert_equal "1.2.3", locations.plugin_json_version
+      # Both marketplace manifests, metadata + plugin version each.
+      assert_equal 2, locations.marketplace_paths.size
+      locations.marketplace_paths.each_value do |path|
+        assert_equal "1.2.3", locations.marketplace_metadata_version(path)
+        assert_equal "1.2.3", locations.marketplace_plugin_version(path)
+      end
       assert locations.consistent?
     end
   end
@@ -128,9 +137,10 @@ class ReleaseVersionLocationsTest < Minitest::Test
   def test_malformed_marketplace_raises_clear_error
     Dir.mktmpdir do |dir|
       write_repo_fixture(dir, "1.0.0")
-      File.write(File.join(dir, ".claude-plugin", "marketplace.json"), "{ not json")
+      path = File.join(dir, ".claude-plugin", "marketplace.json")
+      File.write(path, "{ not json")
       error = assert_raises(OutlawSkills::ReleaseError) do
-        OutlawSkills::VersionLocations.new(root: dir).marketplace_metadata_version
+        OutlawSkills::VersionLocations.new(root: dir).marketplace_metadata_version(path)
       end
       assert_match(/malformed/, error.message)
     end
@@ -318,7 +328,7 @@ class ReleaserCoreTest < Minitest::Test
       end
 
       assert_match(/rolled back/, error.message)
-      assert_includes git.calls, [:restore, "VERSION", ".claude-plugin/marketplace.json", "dist"],
+      assert_includes git.calls, [:restore, "VERSION", ".claude-plugin/marketplace.json", ".github/plugin/marketplace.json", "dist"],
         "a failed test gate must restore the bump's tracked paths (R14)"
       assert_includes git.calls, [:clean_untracked, "dist"],
         "rollback must also remove untracked dist files a rebuild may have added (R14)"
@@ -349,7 +359,7 @@ class ReleaserPublishTest < Minitest::Test
       result = release(dir, git: git, gh: gh, out: out)
 
       assert_equal "0.1.1", result
-      assert_includes git.calls, [:add, "VERSION", ".claude-plugin/marketplace.json", "dist"]
+      assert_includes git.calls, [:add, "VERSION", ".claude-plugin/marketplace.json", ".github/plugin/marketplace.json", "dist"]
       assert_includes git.calls, [:commit, "chore(release): v0.1.1"]
       assert_includes git.calls, [:tag, "v0.1.1", "Release v0.1.1"]
       assert_includes git.calls, [:push, "main", "v0.1.1"]
