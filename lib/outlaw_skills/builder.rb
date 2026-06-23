@@ -1,70 +1,28 @@
 require_relative "frontmatter"
 require_relative "manifest"
-require_relative "targets/claude"
-require_relative "targets/copilot"
+require_relative "targets/plugin"
 
 module OutlawSkills
-  # Known build targets — recognized values for the `targets:` frontmatter
-  # field and the bin/build CLI argument.
-  TARGETS = %w[claude copilot].freeze
-
   # CLI entry point used by bin/build.
+  #
+  # There is a single distribution: dist/plugin/. Both Claude Code and Copilot
+  # CLI read the same plugin layout natively (`.claude-plugin/plugin.json`,
+  # `skills/<name>/SKILL.md`, `agents/*.agent.md`, `hooks/hooks.json`), so one
+  # tree serves both tools and no per-target conversion is performed.
   module CLI
-    VALID_ARGS = (TARGETS + ["all"]).freeze
-
     def self.run(argv, root: default_root)
-      arg = argv.first || "all"
-      unless VALID_ARGS.include?(arg)
-        abort "unknown target: #{arg.inspect} (known: #{VALID_ARGS.join(', ')})"
+      unless argv.empty? || argv == ["plugin"]
+        abort "usage: bin/build  (builds the single dist/plugin/ tree)"
       end
 
-      builder = Builder.new(root: root)
-      targets = case arg
-                when "all"     then TARGETS
-                when "claude"  then ["claude"]
-                when "copilot" then ["copilot"]
-                end
-
-      targets.each { |t| builder.build_target(t) }
-      $stderr.puts "built: #{targets.join(', ')}"
+      Builder.new(root: root).build
+      $stderr.puts "built: dist/plugin"
     rescue BuildError => e
       abort "build error: #{e.message}"
     end
 
     def self.default_root
       File.expand_path("../..", __dir__)
-    end
-  end
-
-  # Resolves a `targets:` frontmatter field into a list of build-target names.
-  # Shared between Skill and Agent so the validation rules live in one place.
-  module Targetable
-    def targets
-      @targets ||= resolve_targets
-    end
-
-    def targets?(target_name)
-      targets.include?(target_name)
-    end
-
-    private
-
-    def resolve_targets
-      raw = frontmatter["targets"]
-      return TARGETS if raw.nil?
-
-      raise BuildError, "#{targetable_source}: `targets:` must be an array, got #{raw.class}" unless raw.is_a?(Array)
-      raise BuildError, "#{targetable_source}: `targets:` cannot be empty" if raw.empty?
-
-      unknown = raw - TARGETS
-      warn "warning: #{targetable_source}: ignoring unknown target(s): #{unknown.inspect}" if unknown.any?
-      recognized = raw & TARGETS
-      if recognized.empty?
-        raise BuildError,
-          "#{targetable_source}: `targets:` contains no known targets " \
-            "(got #{raw.inspect}, known: #{TARGETS.inspect})"
-      end
-      recognized
     end
   end
 
@@ -79,20 +37,17 @@ module OutlawSkills
 
     def src_root  = File.join(@root, "src")
     def dist_root = File.join(@root, "dist")
+    def hooks_src = File.join(src_root, "hooks")
     def version_file = File.join(@root, "VERSION")
     def version = @version ||= File.read(version_file).strip
 
-    def build_target(name)
-      case name
-      when "claude"  then Targets::Claude.new(self).build
-      when "copilot" then Targets::Copilot.new(self).build
-      else raise BuildError, "no target implementation for #{name}"
-      end
+    def build
+      Targets::Plugin.new(self).build
     end
 
     # All discovered skills. Validates frontmatter eagerly so malformed
-    # content fails the build with a clear file-named error (R8) regardless
-    # of whether `targets:` filtering applies in the current target.
+    # content fails the build with a clear file-named error regardless of
+    # where the failure would otherwise surface.
     def skills
       @skills ||= Dir.glob(File.join(src_root, "skills", "*")).select { |p| File.directory?(p) }.sort.map do |path|
         Skill.new(path)
@@ -102,22 +57,9 @@ module OutlawSkills
     def agents
       @agents ||= Dir.glob(File.join(src_root, "agents", "*.agent.md")).sort.map { |p| Agent.new(p) }
     end
-
-    # Per-target filtering. Items with no `targets:` field default to all
-    # known targets. Items with an explicit list are included only when the
-    # current target appears in that list.
-    def skills_for(target_name)
-      skills.select { |s| s.targets?(target_name) }
-    end
-
-    def agents_for(target_name)
-      agents.select { |a| a.targets?(target_name) }
-    end
   end
 
   class Skill
-    include Targetable
-
     attr_reader :path
 
     def initialize(path)
@@ -135,18 +77,13 @@ module OutlawSkills
 
     private
 
-    def targetable_source = skill_md_path
-
     def validate!
       raise BuildError, "skill #{@name} missing SKILL.md at #{skill_md_path}" unless File.file?(skill_md_path)
       frontmatter # trigger parse; raises BuildError on malformed YAML
-      targets     # trigger targets resolution; raises BuildError on invalid `targets:`
     end
   end
 
   class Agent
-    include Targetable
-
     attr_reader :path
 
     def initialize(path)
@@ -163,11 +100,8 @@ module OutlawSkills
 
     private
 
-    def targetable_source = @path
-
     def validate!
       frontmatter
-      targets
     end
   end
 end

@@ -10,34 +10,46 @@ module OutlawSkills
   # Reads the plugin version from every location that must stay in sync.
   #
   # VERSION is the single source of truth (the build reads it to stamp
-  # dist/claude/.claude-plugin/plugin.json), but .claude-plugin/marketplace.json
-  # is hand-maintained and carries two more copies of the version. This reader
-  # exposes all four so a test can assert they agree (the invariant the
-  # release pipeline must preserve).
+  # dist/plugin/.claude-plugin/plugin.json). Two hand-maintained marketplace
+  # manifests each carry two more copies of the version: .claude-plugin/
+  # marketplace.json (Claude) and .github/plugin/marketplace.json (Copilot).
+  # This reader exposes every copy so a test can assert they all agree (the
+  # invariant the release pipeline must preserve).
   class VersionLocations
+    # Marketplace manifests, keyed for messages and iteration. Both point their
+    # plugin `source` at the single dist/plugin/ tree.
+    MARKETPLACES = {
+      claude:  [".claude-plugin", "marketplace.json"],
+      copilot: [".github", "plugin", "marketplace.json"]
+    }.freeze
+
     def initialize(root:)
       @root = root
     end
 
     def version_file_path = File.join(@root, "VERSION")
-    def marketplace_path  = File.join(@root, ".claude-plugin", "marketplace.json")
-    def plugin_json_path  = File.join(@root, "dist", "claude", ".claude-plugin", "plugin.json")
+    def plugin_json_path  = File.join(@root, "dist", "plugin", ".claude-plugin", "plugin.json")
+
+    # Absolute paths to the two marketplace manifests, keyed as in MARKETPLACES.
+    def marketplace_paths
+      MARKETPLACES.transform_values { |parts| File.join(@root, *parts) }
+    end
 
     def version_file
       raise ReleaseError, "VERSION file missing at #{version_file_path}" unless File.file?(version_file_path)
       File.read(version_file_path).strip
     end
 
-    def marketplace_metadata_version
-      version = marketplace.dig("metadata", "version")
-      raise ReleaseError, "marketplace.json missing metadata.version at #{marketplace_path}" if version.nil?
+    def marketplace_metadata_version(path)
+      version = read_marketplace(path).dig("metadata", "version")
+      raise ReleaseError, "marketplace.json missing metadata.version at #{path}" if version.nil?
       version
     end
 
-    def marketplace_plugin_version
-      plugins = marketplace["plugins"]
+    def marketplace_plugin_version(path)
+      plugins = read_marketplace(path)["plugins"]
       unless plugins.is_a?(Array) && plugins[0].is_a?(Hash) && plugins[0].key?("version")
-        raise ReleaseError, "marketplace.json missing plugins[0].version at #{marketplace_path}"
+        raise ReleaseError, "marketplace.json missing plugins[0].version at #{path}"
       end
       plugins[0]["version"]
     end
@@ -51,14 +63,15 @@ module OutlawSkills
       version
     end
 
-    # All four version strings, keyed by location.
+    # Every version string, keyed by location. Two entries per marketplace
+    # (metadata + plugin) plus VERSION and the built plugin.json.
     def all
-      {
-        version_file: version_file,
-        marketplace_metadata: marketplace_metadata_version,
-        marketplace_plugin: marketplace_plugin_version,
-        plugin_json: plugin_json_version
-      }
+      result = { version_file: version_file, plugin_json: plugin_json_version }
+      marketplace_paths.each do |key, path|
+        result[:"#{key}_marketplace_metadata"] = marketplace_metadata_version(path)
+        result[:"#{key}_marketplace_plugin"]   = marketplace_plugin_version(path)
+      end
+      result
     end
 
     # True when every location reports the same version.
@@ -68,11 +81,11 @@ module OutlawSkills
 
     private
 
-    def marketplace
-      raise ReleaseError, "marketplace.json missing at #{marketplace_path}" unless File.file?(marketplace_path)
-      JSON.parse(File.read(marketplace_path))
+    def read_marketplace(path)
+      raise ReleaseError, "marketplace.json missing at #{path}" unless File.file?(path)
+      JSON.parse(File.read(path))
     rescue JSON::ParserError => e
-      raise ReleaseError, "marketplace.json malformed at #{marketplace_path}: #{e.message}"
+      raise ReleaseError, "marketplace.json malformed at #{path}: #{e.message}"
     end
   end
 
@@ -229,7 +242,7 @@ module OutlawSkills
   # rebuild, test gate (with rollback on failure). Publishing (branch guard,
   # commit, tag, push, GitHub release) is layered on in U3.
   class Releaser
-    BUMP_PATHS = ["VERSION", ".claude-plugin/marketplace.json", "dist"].freeze
+    BUMP_PATHS = ["VERSION", ".claude-plugin/marketplace.json", ".github/plugin/marketplace.json", "dist"].freeze
 
     def initialize(root:, level: "patch", dry_run: false, gh_release: true,
                    override_branch: false, release_branch: "main", out: $stdout,
@@ -338,7 +351,7 @@ module OutlawSkills
 
     def apply_version(next_version)
       File.write(@locations.version_file_path, "#{next_version}\n")
-      MarketplaceSync.write(@locations.marketplace_path, next_version)
+      @locations.marketplace_paths.each_value { |path| MarketplaceSync.write(path, next_version) }
       @build.call
     end
 
@@ -368,8 +381,7 @@ module OutlawSkills
     end
 
     def default_build
-      builder = Builder.new(root: @root)
-      TARGETS.each { |target| builder.build_target(target) }
+      Builder.new(root: @root).build
     end
   end
 
