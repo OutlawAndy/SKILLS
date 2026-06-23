@@ -2,38 +2,124 @@
 
 A multi-harness skill pipeline & my personal customization layer atop the growing pile of excellent open-source skills that I use & appreciate, ***but also disagree with at one level or another*** 😉
 
-## Skill Diff
-
-Enables comparisons of the upstream version of forked skills in this repo.
-
-e.g. /work
-![work](./assets/skill-diff-example.png)
-
 ## Quick start
 
-The `dist/plugin/` directory holds a prebuilt plugin consumed by both Claude Code and GitHub Copilot CLI. It is not on any official marketplace, so clone this repo and install from its local marketplace manifest. Rebuild with `bin/build` if you change anything under `src/`.
+- **Claude Code:**
+  ```sh
+  claude plugin marketplace add OutlawAndy/SKILLS
+  claude plugin install outlaw-skills@outlaw-skills
+  ```
+- **GitHub Copilot:**
+  ```sh
+  copilot plugin marketplace add OutlawAndy/SKILLS
+  copilot plugin install outlaw-skills@outlaw-skills
+  ```
+
+## What is Included
+
+### RAILS WORKFLOW CLUSTER
+
+     user: "plan this"              user: "work this"
+            │                              │
+            ▼                              ▼
+       ┌─────────┐                    ┌─────────┐
+       │  plan   │                    │  work   │
+       └────┬────┘                    └────┬────┘
+            │                              │
+            │   loads first ┌──────────────┤ loads first
+            │               ▼              │
+            │       ┌───────────────┐      │
+            ├──────▶│ rails-context │◀─────┤
+            │       │   (primer)    │      │
+            │       └───────┬───────┘      │     ┌── also cited
+            │               │ dispatch triggers  │   standalone
+            │               ▼              │     ▼
+            │   ┌───────────────────────────────────────┐
+            ├──▶│  controller-patterns                  │
+            ├──▶│  routing-patterns                     │
+            ├──▶│  frontend-patterns                    │
+            │   │  [layered-rails]      (external)      │
+            │   │  [ce-dhh-rails-style] (external)      │
+            │   │  ruby-version  (when version unsure)  │
+            │   └───────────────────────────────────────┘
+            │
+            │ delegates core engine to
+            ▼
+        [ce-plan]       ◀╌╌ plan "replaces" generic ce-plan
+        [ce-work]       ◀╌╌ work "replaces" generic ce-work
+        [ce-brainstorm] ◀╌╌ work hands off for vague scope
+
+
+### SKILL-MAINTENANCE CLUSTER
+
+     ┌─────────────┐   semantic pass, then     ┌──────────┐
+     │ skill-audit │ ───── hands off to ─────▶ │ md-audit │
+     └──────┬──────┘    (mechanical cleanup)   └────┬─────┘
+            │                                       │
+            │   both reference, as sibling tools    │
+            └──────────────┬────────────────────────┘
+                           ▼
+                     ┌────────────┐
+                     │ skill-diff │  (local vs. upstream drift report)
+                     └────────────┘
+
+### STANDALONE
+  
+     find-skills      — no internal deps (discovery/install helper)
+     brave-breakdown  — no internal deps (BRAVE ticket breakdown)
+
+### DEPENDENCIES
+
+  - **rails-context** is the shared spine — both work and plan load it before anything else so they reason from one Rails framing. It's the only "load first" dependency and is never invoked directly.
+  - **work**/**plan** → pattern skills (**controller-patterns**, **routing-patterns**, **frontend-patterns**) is the mandatory dispatch fan-out; **rails-context** defines the triggers that fire them.
+  - *External delegation*: **work**→[*ce-work*], **plan**→[*ce-plan*] (engines they wrap), plus [**layered-rails**] and [**ce-dhh-rails-style**] in the dispatch set.
+  - *Maintenance chain*: **skill-audit** (semantic) → **md-audit** (mechanical), with **skill-diff** as the upstream-comparison sibling.
+  - **find-skills** and **brave-breakdown** stand alone — no cross-skill wiring.
+
+## Local Development & Building from Source
+
+The `dist/plugin/` directory holds a prebuilt plugin consumed by both Claude Code and GitHub Copilot CLI.
+
+All changes should be localized within the `src/` directory **only**.  After making a change, rebuild the plugin with the `bin/build` script.
 
 ```sh
 bin/build   # builds the single dist/plugin/ tree
 ```
 
-Wire the built distribution into your tools — both install from `dist/plugin/` via their own marketplace manifest:
+> [!IMPORTANT]
+> Plugins are cached by version number, so a bare `bin/build` rebuild won't refresh your installed copy — you must bump the version and then run `plugin update`. 
 
-- **Claude Code:** in any session, run `/plugin marketplace add OutlawAndy/SKILLS` then `/plugin install outlaw-skills@outlaw-skills`, and restart.
-- **GitHub Copilot CLI:** `copilot plugin marketplace add OutlawAndy/SKILLS` then `copilot plugin install outlaw-skills@outlaw-skills`. Copilot reads the open Agent Skills (`SKILL.md`) format natively, so skills are copied verbatim — no conversion — and auto-activate by description.
+Enable installation of your local clone by passing your repository's absolute file path to the `marketplace add` command of your AI harness of choice.
 
-Full install details, the hook caveat, and the verification checklist live in [AGENTS.md](AGENTS.md).
+```sh
+claude plugin marketplace add <absolute-path-to-repository-root>
+copilot plugin marketplace add <absolute-path-to-repository-root>
+```
+
+With the marketplaces added, plugins can be installed by name just as before.
+
+> [!Important]
+> Marketplace Entries are **unique by name**, so you can swap a locally sourced entry for a GitHub entry & vice versa, but you cannot run both at once.
+
+See [AGENTS.md](AGENTS.md) for full install details, a caveat about hooks, and the verification checklist.
 
 ## Releasing & updating
-
-Cut a release with `bin/release` (bumps `VERSION`, syncs both marketplace manifests, rebuilds `dist/plugin/`, runs tests, tags `vX.Y.Z`, pushes, and creates a GitHub release):
 
 ```sh
 bin/release patch        # or: minor | major
 bin/release --dry-run    # preview without changing anything
 ```
 
-Claude Code caches the plugin by version, so a bare `bin/build` rebuild won't refresh a running install — you must bump the version with `bin/release`, then run `/plugin update outlaw-skills@outlaw-skills` (or relaunch). See [AGENTS.md](AGENTS.md#release) for preconditions and flags.
+Running `bin/release` executes the following steps
+
+1. bump `VERSION`
+2. sync marketplace manifests for each harness
+3. rebuild `dist/plugin/`
+4. run the tests
+5. create and push a tag `vX.Y.Z`
+6. generate a GitHub release 🎉
+
+See [AGENTS.md](AGENTS.md#release) for preconditions and flags.
 
 ## Running the tests
 
@@ -45,6 +131,6 @@ minitest
 
 Tests cover the build pipeline, the single-tree output (skills, agents, hooks), build idempotency, and the release version-sync invariant.
 
-## License
+## MIT License
 
-MIT. See [LICENSE](LICENSE).
+See [LICENSE](LICENSE).
