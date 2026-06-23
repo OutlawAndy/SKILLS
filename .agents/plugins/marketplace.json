@@ -1,0 +1,20 @@
+{
+  "name": "outlaw-skills",
+  "interface": {
+    "displayName": "Outlaw Skills"
+  },
+  "plugins": [
+    {
+      "name": "outlaw-skills",
+      "source": {
+        "source": "local",
+        "path": "./dist/copilot"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_USE"
+      },
+      "category": "Developer Tools"
+    }
+  ]
+}

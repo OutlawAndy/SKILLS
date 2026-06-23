@@ -2,9 +2,6 @@
   "name": "outlaw-skills",
   "version": "0.1.2",
   "description": "Personal cross-tool layer of AI coding-agent skills and reviewer personas.",
-  "homepage": "https://github.com/OutlawAndy/SKILLS",
-  "repository": "https://github.com/OutlawAndy/SKILLS",
-  "category": "Developer Tools",
   "author": {
     "name": "Andy Cohen",
     "email": "outlawandy@gmail.com"

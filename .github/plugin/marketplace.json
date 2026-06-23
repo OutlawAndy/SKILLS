@@ -24,7 +24,7 @@
         "ruby",
         "agent-skills"
       ],
-      "source": "./dist/claude"
+      "source": "./dist/copilot"
     }
   ]
 }
