@@ -52,16 +52,19 @@ A multi-harness skill pipeline & my personal customization layer atop the growin
 
 ### SKILL-MAINTENANCE CLUSTER
 
-     ┌─────────────┐   semantic pass, then     ┌──────────┐
-     │ skill-audit │ ───── hands off to ─────▶ │ md-audit │
-     └──────┬──────┘    (mechanical cleanup)   └────┬─────┘
-            │                                       │
-            │   both reference, as sibling tools    │
-            └──────────────┬────────────────────────┘
-                           ▼
-                     ┌────────────┐
-                     │ skill-diff │  (local vs. upstream drift report)
-                     └────────────┘
+     user: "vet this skill"
+            │
+            ▼
+         ┌─────┐   opinion vetting, then suggests     ┌─────────────┐   semantic pass, then     ┌──────────┐
+         │ vet │ ──────── hands off to ──────────────▶│ skill-audit │ ───── hands off to ─────▶ │ md-audit │
+         └─────┘      (coherence cleanup)             └──────┬──────┘    (mechanical cleanup)   └────┬─────┘
+                                                             │                                       │
+                                                             │   both reference, as sibling tools    │
+                                                             └──────────────┬────────────────────────┘
+                                                                            ▼
+                                                                      ┌────────────┐
+                                                                      │ skill-diff │  (local vs. upstream drift)
+                                                                      └────────────┘
 
 ### STANDALONE
   
@@ -73,7 +76,7 @@ A multi-harness skill pipeline & my personal customization layer atop the growin
   - **rails-context** is the shared spine — both work and plan load it before anything else so they reason from one Rails framing. It's the only "load first" dependency and is never invoked directly.
   - **work**/**plan** → pattern skills (**controller-patterns**, **routing-patterns**, **frontend-patterns**) is the mandatory dispatch fan-out; **rails-context** defines the triggers that fire them.
   - *External delegation*: **work**→[*ce-work*], **plan**→[*ce-plan*] (engines they wrap), plus [**layered-rails**] and [**ce-dhh-rails-style**] in the dispatch set.
-  - *Maintenance chain*: **skill-audit** (semantic) → **md-audit** (mechanical), with **skill-diff** as the upstream-comparison sibling.
+  - *Maintenance chain*: **vet** (opinion vetting) → **skill-audit** (coherence) → **md-audit** (mechanical), with **skill-diff** as the upstream-comparison sibling. `vet` is the entry point when adopting a skill; `skill-audit` can also be invoked standalone for coherence-only audits.
   - **find-skills** and **brave-breakdown** stand alone — no cross-skill wiring.
 
 ## Local Development & Building from Source
