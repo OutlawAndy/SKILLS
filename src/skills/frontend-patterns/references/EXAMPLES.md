@@ -3,6 +3,7 @@
 ## Slim Template Examples
 
 ### Basic Partial with Locals
+
 ```slim
 -# app/views/users/_user_card.html.slim
 -# locals: (user:, active: false, show_actions: true)
@@ -24,6 +25,7 @@
 ```
 
 ### Collection Rendering with Empty State
+
 ```slim
 -# app/views/time_entries/index.html.slim
 
@@ -71,6 +73,7 @@ When the form needs live recalculation or other behavior, wire a Stimulus contro
 ```
 
 ### Conditional Rendering Patterns
+
 ```slim
 -# Show/hide based on authorization
 - if policy(@project).update?
@@ -156,6 +159,7 @@ table.time-entries-table
 ```
 
 ### Modal Form with External Submit
+
 ```slim
 -# app/views/time_entries/_reject_modal.html.slim
 
@@ -188,6 +192,7 @@ table.time-entries-table
 ```
 
 ### Nested Attributes Form
+
 ```slim
 -# app/views/invoices/_form.html.slim
 
@@ -224,6 +229,7 @@ table.time-entries-table
 ## Stimulus Controller Examples
 
 ### Auto-Submit Controller
+
 ```javascript
 // app/javascript/controllers/auto_submit_controller.js
 import { Controller } from "@hotwired/stimulus"
@@ -252,6 +258,7 @@ export default class extends Controller {
 ```
 
 Usage (the search is backed by a form object, so still no `url:`):
+
 ```slim
 = simple_form_for @search, data: { controller: 'auto-submit' } do |f|
   = f.input :query,
@@ -259,6 +266,7 @@ Usage (the search is backed by a form object, so still no `url:`):
 ```
 
 ### Bulk Select Controller
+
 ```javascript
 // app/javascript/controllers/bulk_select_controller.js
 import { Controller } from "@hotwired/stimulus"
@@ -286,6 +294,7 @@ export default class extends Controller {
 ```
 
 Usage:
+
 ```slim
 .bulk-select data-controller="bulk-select"
   = check_box_tag 'select_all', '1', false,
@@ -303,6 +312,7 @@ Usage:
 ```
 
 ### Toggle Controller
+
 ```javascript
 // app/javascript/controllers/toggle_controller.js
 import { Controller } from "@hotwired/stimulus"
@@ -332,6 +342,7 @@ export default class extends Controller {
 ```
 
 Usage:
+
 ```slim
 .expandable data-controller="toggle" data-toggle-hidden-class="hidden"
   button.expandable__trigger data-action="toggle#toggle" Toggle Details
@@ -343,6 +354,7 @@ Usage:
 ## Layout Patterns
 
 ### Page Header with Actions
+
 ```slim
 -# app/views/projects/show.html.slim
 
@@ -362,6 +374,7 @@ Usage:
 ```
 
 ### Tabbed Navigation
+
 ```slim
 -# app/views/projects/show.html.slim
 
@@ -380,6 +393,7 @@ nav.tabs
 ```
 
 ### Card Grid Layout
+
 ```slim
 -# app/views/projects/index.html.slim
 
