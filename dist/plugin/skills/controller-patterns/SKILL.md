@@ -125,6 +125,7 @@ end
 - `authorize ClassName.new()` for new records (new, create)
 - `authorize` in `set_*` methods for existing records
 - Never skip authorization of some kind in a controller action
+- Exactly one `authorize`/`authorize!` call per action (a `before_action` set method counts). A second call over-constrains the action. A side effect on the already-authorized `current_user` (e.g. creating a bookkeeping record tied to them) doesn't need its own authorize check — the action's single authorize already covers it.
 - Don't write empty actions - `def edit; end` is unnecessary and adds noise.
 - Controllers are simply the necessary glue between view and model. The goal should be to never look at them.
 - assign exactly one instance variable per action, whether that happens in a before action hook or in the action itself.
