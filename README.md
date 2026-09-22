@@ -78,6 +78,52 @@ A multi-harness skill pipeline & my personal customization layer atop the growin
 
   find-skills      — no internal deps (discovery/install helper)
   brave-breakdown  — no internal deps (BRAVE ticket breakdown)
+  driving          — hands-free mode (skill + Stop hook, see below)
+
+### DRIVING MODE
+
+    /driving                        /driving off
+        │                                │
+        ▼                                ▼
+   touch ~/.claude/driving-mode   rm ~/.claude/driving-mode
+        │                                │
+        │  flag read at runtime by       │
+        ▼                                ▼
+    ┌──────────────────────────────────────────┐
+    │  Stop hook: hooks/driving-speak.sh       │
+    │  no flag → exit 0, session stays silent  │
+    │  flag    → say(the `Spoken:` line)       │
+    └──────────────────────────────────────────┘
+
+`/driving` is for working while you can't look at the screen. It does two
+things that are deliberately separate:
+
+- **The hook speaks.** A `Stop` hook fires after every response and reads the
+  message's `Spoken:` line through macOS `say`. Mechanical — the model can't
+  forget to speak, because it isn't the one calling `say`.
+- **The skill decides what's worth hearing.** It tells the model to write that
+  `Spoken:` line for the ear (no paths, no code, short sentences), and to
+  present decisions **one at a time**, waiting for explicit approval between
+  each instead of dumping a list you can't read.
+
+Only the `Spoken:` line is read aloud, never the whole message — raw markdown
+is unlistenable, and the point is that the audio was composed to be heard. A
+message with no `Spoken:` line gets a short nudge spoken instead, because
+silence is indistinguishable from the mode being off when you're watching the
+road.
+
+Tuning, if the default voice is wrong for the car:
+
+| Variable | Default | Notes |
+| --- | --- | --- |
+| `OUTLAW_DRIVING_RATE` | `175` | words per minute |
+| `OUTLAW_DRIVING_VOICE` | system voice | any name from `say -v '?'` |
+| `OUTLAW_DRIVING_FLAG` | `~/.claude/driving-mode` | flag file path |
+
+Caveats worth knowing: the flag is global, so every Claude Code session on the
+machine speaks while it exists; `say` is macOS-only and the hook exits quietly
+elsewhere; and each response cuts off the previous utterance for that session
+rather than queueing behind it.
 
 ### DEPENDENCIES
 
@@ -86,6 +132,7 @@ A multi-harness skill pipeline & my personal customization layer atop the growin
 - *External delegation*: **work**→[*ce-work*], **plan**→[*ce-plan*] (engines they wrap), plus [**layered-rails**] and [**ce-dhh-rails-style**] in the dispatch set.
 - *Maintenance chain*: **vet** (opinion vetting) → **skill-audit** (coherence) → **md-audit** (mechanical), with **skill-diff** as the upstream-comparison sibling. `vet` is the entry point when adopting a skill; `skill-audit` can also be invoked standalone for coherence-only audits.
 - **find-skills** and **brave-breakdown** stand alone — no cross-skill wiring.
+- **driving** stands alone too, but is the only skill paired with a hook: it owns the flag file that `hooks/driving-speak.sh` reads. Neither half does anything useful without the other.
 
 ## Local Development & Building from Source
 

@@ -39,7 +39,7 @@ outlaw-skills/
 
 **Skills** ship as the open Agent Skills (`SKILL.md`) format Copilot reads natively — bundled scripts and resources intact, auto-activated by description (and invocable as `/<name>`). **Agents** are copied verbatim with Claude-native `tools:` (`Read, Grep, Glob, Bash`); Copilot maps these case-insensitively (`Read`→`read`, `Bash`→`execute`) and a non-empty `tools:` list *restricts* rather than grants, so the read-only reviewer personas stay read-only there.
 
-**Hook caveat:** the plugin ships a Claude-format `hooks/hooks.json` (the rails-gate `PreToolUse` gate, running `hooks/rails-gate.sh`). It is effective in Claude Code. Copilot loads the plugin cleanly with it present, but Copilot's plugin-level `preToolUse` support differs (camelCase events, a different entry shape, and an open upstream gap), so the gate is Claude-only in practice.
+**Hook caveat:** the plugin ships a Claude-format `hooks/hooks.json` — the rails-gate `PreToolUse` gate (`hooks/rails-gate.sh`) and the driving-mode `Stop` hook (`hooks/driving-speak.sh`, inert unless `~/.claude/driving-mode` exists). Both are effective in Claude Code. Copilot loads the plugin cleanly with it present, but Copilot's plugin-level `preToolUse` support differs (camelCase events, a different entry shape, and an open upstream gap), so the gate is Claude-only in practice.
 
 ## Verification Checklist
 
@@ -47,7 +47,8 @@ Run after each install to confirm skills and agents are live.
 
 **Claude Code:**
 
-- [ ] `/find-skills`, `/controller-patterns`, `/ruby-version`, `/brave-breakdown`, `/routing-patterns`, `/skill-audit`, `/md-audit` each invoke successfully
+- [ ] `/find-skills`, `/controller-patterns`, `/ruby-version`, `/brave-breakdown`, `/routing-patterns`, `/skill-audit`, `/md-audit`, `/driving` each invoke successfully
+- [ ] `/driving` speaks a response, `/driving off` restores silence
 - [ ] `dhh-rails-reviewer` and `kieran-rails-reviewer` agents are dispatchable
 - [ ] `claude plugin validate ./dist/plugin` passes
 
