@@ -3,7 +3,7 @@ require "json"
 
 module OutlawSkills
   module Targets
-    # Emits one plugin tree (dist/plugin/ or dist/<name>/) consumed natively by
+    # Emits one plugin tree (dist/<name>/) consumed natively by
     # both Claude Code and Copilot CLI:
     #
     #   .claude-plugin/plugin.json   manifest (the one location both tools read)

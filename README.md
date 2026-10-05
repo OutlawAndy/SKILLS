@@ -7,13 +7,13 @@ A multi-harness skill pipeline & my personal customization layer atop the growin
 - **Claude Code:**
   ```sh
   claude plugin marketplace add OutlawAndy/SKILLS
-  claude plugin install outlaw-skills@outlaw-skills
-  claude plugin install driving@outlaw-skills   # hands-free mode, also installable on its own
+  claude plugin install rails@outlawandy
+  claude plugin install driving@outlawandy   # hands-free mode, also installable on its own
   ```
 - **GitHub Copilot:**
   ```sh
   copilot plugin marketplace add OutlawAndy/SKILLS
-  copilot plugin install outlaw-skills@outlaw-skills
+  copilot plugin install rails@outlawandy
   ```
 
 ## What is Included
@@ -139,12 +139,12 @@ rather than queueing behind it.
 
 ## Local Development & Building from Source
 
-The `dist/plugin/` directory holds a prebuilt plugin consumed by both Claude Code and GitHub Copilot CLI.
+The `dist/<name>/` directories hold prebuilt plugins consumed by both Claude Code and GitHub Copilot CLI.
 
 All changes should be localized within the `src/` directory **only**.  After making a change, rebuild the plugin with the `bin/build` script.
 
 ```sh
-bin/build   # builds dist/plugin/ plus dist/<name>/ for each src/plugins/<name>/
+bin/build   # builds dist/rails/ plus dist/<name>/ for each src/plugins/<name>/
 ```
 
 > [!IMPORTANT]
@@ -175,7 +175,7 @@ Running `bin/release` executes the following steps
 
 1. bump `VERSION`
 2. sync marketplace manifests for each harness
-3. rebuild `dist/plugin/`
+3. rebuild `dist/`
 4. run the tests
 5. create and push a tag `vX.Y.Z`
 6. generate a GitHub release 🎉

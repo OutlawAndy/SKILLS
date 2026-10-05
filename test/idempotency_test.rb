@@ -2,7 +2,7 @@ require_relative "test_helper"
 require "digest"
 
 class IdempotencyTest < Minitest::Test
-  DIST = File.join(ROOT, "dist", "plugin")
+  DIST = File.join(ROOT, "dist", "rails")
 
   # Two consecutive builds produce byte-identical output.
   def test_two_builds_produce_byte_identical_output

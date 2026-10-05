@@ -1,5 +1,5 @@
 {
-  "name": "outlaw-skills",
+  "name": "outlawandy",
   "owner": {
     "name": "Andy Cohen",
     "email": "outlawandy@gmail.com",
@@ -11,7 +11,7 @@
   },
   "plugins": [
     {
-      "name": "outlaw-skills",
+      "name": "rails",
       "description": "Personal cross-tool layer of AI coding-agent skills and reviewer personas.",
       "version": "0.6.0",
       "author": {
@@ -25,7 +25,7 @@
         "agent-skills"
       ],
       "category": "Developer Tools",
-      "source": "./dist/plugin"
+      "source": "./dist/rails"
     }
   ]
 }

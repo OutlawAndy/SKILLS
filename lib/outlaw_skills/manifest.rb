@@ -1,6 +1,6 @@
 module OutlawSkills
   module Manifest
-    NAME = "outlaw-skills"
+    NAME = "rails"
     HOMEPAGE = "https://github.com/OutlawAndy/SKILLS"
     REPOSITORY = "https://github.com/OutlawAndy/SKILLS"
     AUTHOR = {

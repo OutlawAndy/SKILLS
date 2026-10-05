@@ -4,7 +4,7 @@ require "fileutils"
 require "tmpdir"
 
 class BuilderTest < Minitest::Test
-  DIST = File.join(ROOT, "dist", "plugin")
+  DIST = File.join(ROOT, "dist", "rails")
 
   def setup
     @builder = OutlawSkills::Builder.new(root: ROOT)
@@ -16,7 +16,7 @@ class BuilderTest < Minitest::Test
     manifest_path = File.join(DIST, ".claude-plugin", "plugin.json")
     assert File.exist?(manifest_path), "expected manifest at #{manifest_path}"
     manifest = JSON.parse(File.read(manifest_path))
-    assert_equal "outlaw-skills", manifest["name"]
+    assert_equal "rails", manifest["name"]
     assert_equal File.read(File.join(ROOT, "VERSION")).strip, manifest["version"]
     assert_equal "MIT", manifest["license"]
     assert manifest["description"].is_a?(String) && !manifest["description"].empty?
@@ -110,9 +110,9 @@ class BuilderTest < Minitest::Test
       File.write(File.join(tmp, "VERSION"), "0.1.0\n")
       OutlawSkills::Builder.new(root: tmp).build
 
-      manifest = JSON.parse(File.read(File.join(tmp, "dist", "plugin", ".claude-plugin", "plugin.json")))
-      assert_equal "outlaw-skills", manifest["name"]
-      refute File.directory?(File.join(tmp, "dist", "plugin", "skills")),
+      manifest = JSON.parse(File.read(File.join(tmp, "dist", "rails", ".claude-plugin", "plugin.json")))
+      assert_equal "rails", manifest["name"]
+      refute File.directory?(File.join(tmp, "dist", "rails", "skills")),
         "empty skills source should not produce a dist skills/ directory"
     end
   end

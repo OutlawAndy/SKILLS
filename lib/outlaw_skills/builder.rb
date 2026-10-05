@@ -5,9 +5,9 @@ require_relative "targets/plugin"
 module OutlawSkills
   # CLI entry point used by bin/build.
   #
-  # The main distribution is dist/plugin/, built from src/. Each src/plugins/<name>/
-  # is a smaller standalone plugin built to dist/<name>/ for people who want just
-  # that piece. Both Claude Code and Copilot CLI read the same plugin layout
+  # The main `rails` plugin is built from src/. Each src/plugins/<name>/ is a
+  # smaller standalone plugin for people who want just that piece. Every plugin
+  # lands in dist/<name>/. Both Claude Code and Copilot CLI read the same plugin layout
   # natively (`.claude-plugin/plugin.json`, `skills/<name>/SKILL.md`,
   # `agents/*.agent.md`, `hooks/hooks.json`), so no per-target conversion is performed.
   module CLI
@@ -49,7 +49,7 @@ module OutlawSkills
     def plugins
       @plugins ||= [
         PluginSource.new(name: Manifest::NAME, src_dir: src_root,
-                         dist_dir: File.join(dist_root, "plugin"), root_files: %w[AGENTS.md LICENSE]),
+                         dist_dir: File.join(dist_root, Manifest::NAME), root_files: %w[AGENTS.md LICENSE]),
         *Dir.glob(File.join(src_root, "plugins", "*")).select { |p| File.directory?(p) }.sort.map do |path|
           name = File.basename(path)
           PluginSource.new(name: name, src_dir: path, dist_dir: File.join(dist_root, name), root_files: %w[LICENSE])

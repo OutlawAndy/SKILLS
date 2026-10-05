@@ -8,7 +8,7 @@ require "tmpdir"
 # Network-dependent paths (live `gh` resolution + fetch) are intentionally not
 # exercised here so the suite stays green offline.
 class SkillDiffTest < Minitest::Test
-  DIST   = File.join(ROOT, "dist", "plugin")
+  DIST   = File.join(ROOT, "dist", "rails")
   SCRIPT = File.join(ROOT, "src", "skills", "skill-diff", "scripts", "compare.sh")
 
   def setup

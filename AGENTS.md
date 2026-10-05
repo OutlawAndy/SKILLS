@@ -1,6 +1,6 @@
 # outlaw-skills
 
-A personal cross-tool layer of AI coding-agent skills and reviewer personas. Canonical source lives in `src/`; `bin/build` transpiles it into the main plugin under `dist/plugin/`, plus one standalone plugin per `src/plugins/<name>/` under `dist/<name>/` (currently `driving`), all consumed natively by both Claude Code and GitHub Copilot CLI.
+A personal cross-tool layer of AI coding-agent skills and reviewer personas. Canonical source lives in `src/`; `bin/build` transpiles it into the main `rails` plugin under `dist/rails/`, plus one standalone plugin per `src/plugins/<name>/` under `dist/<name>/` (currently `driving`), all consumed natively by both Claude Code and GitHub Copilot CLI.
 
 ## Project Layout
 
@@ -12,16 +12,16 @@ outlaw-skills/
     hooks/             # plugin hooks: hooks.json + scripts (e.g. rails-gate.sh)
     plugins/<name>/    # standalone plugins (skills/, hooks/), built to dist/<name>/
   bin/
-    build              # Ruby script that produces dist/plugin/
+    build              # Ruby script that produces dist/<name>/ for each plugin
     release            # Ruby script that bumps the version, rebuilds, tags, and publishes a release
   lib/outlaw_skills/   # build logic
   dist/                # generated plugin distribution (checked in)
-    plugin/            # the main tree: .claude-plugin/plugin.json, skills/,
+    rails/             # the main tree: .claude-plugin/plugin.json, skills/,
                        #   agents/, hooks/, AGENTS.md, LICENSE — read natively by
                        #   both Claude Code and Copilot CLI
     driving/           # standalone driving plugin: skill + Stop hook
-  .claude-plugin/marketplace.json   # Claude marketplace: outlaw-skills -> ./dist/plugin, driving -> ./dist/driving
-  .github/plugin/marketplace.json   # Copilot marketplace, source -> ./dist/plugin
+  .claude-plugin/marketplace.json   # Claude marketplace `outlawandy`: rails -> ./dist/rails, driving -> ./dist/driving
+  .github/plugin/marketplace.json   # Copilot marketplace `outlawandy`: rails -> ./dist/rails
   VERSION              # single source of version truth (semver; bump via bin/release)
   LICENSE              # MIT
   AGENTS.md            # this file
@@ -37,7 +37,7 @@ outlaw-skills/
 - If `gh` is missing or unauthenticated, the local commit/tag/push still complete and the exact `gh release create ...` command is printed to run by hand.
 - Do not hand-edit `VERSION` or the marketplace version fields — `bin/release` keeps every version location (VERSION, both marketplace manifests, and the built `plugin.json`) in sync and a test asserts they agree.
 
-**Why a version bump is required:** Claude Code caches the installed plugin by version at `~/.claude/plugins/cache/outlaw-skills/outlaw-skills/<version>/` and serves that cached copy. Rebuilding `dist/` in place does **not** refresh a running install while the version is unchanged — the cache is keyed on the version string (alongside the recorded commit SHA). Bumping the version is what forces a re-copy. Copilot CLI behaves the same way via its own plugin cache.
+**Why a version bump is required:** Claude Code caches the installed plugin by version at `~/.claude/plugins/cache/outlawandy/<plugin>/<version>/` and serves that cached copy. Rebuilding `dist/` in place does **not** refresh a running install while the version is unchanged — the cache is keyed on the version string (alongside the recorded commit SHA). Bumping the version is what forces a re-copy. Copilot CLI behaves the same way via its own plugin cache.
 
 **Skills** ship as the open Agent Skills (`SKILL.md`) format Copilot reads natively — bundled scripts and resources intact, auto-activated by description (and invocable as `/<name>`). **Agents** are copied verbatim with Claude-native `tools:` (`Read, Grep, Glob, Bash`); Copilot maps these case-insensitively (`Read`→`read`, `Bash`→`execute`) and a non-empty `tools:` list *restricts* rather than grants, so the read-only reviewer personas stay read-only there.
 
@@ -52,12 +52,12 @@ Run after each install to confirm skills and agents are live.
 - [ ] `/find-skills`, `/controller-patterns`, `/ruby-version`, `/brave-breakdown`, `/routing-patterns`, `/skill-audit`, `/md-audit`, `/driving` each invoke successfully
 - [ ] `/driving` speaks a response, `/driving off` restores silence
 - [ ] `dhh-rails-reviewer` and `kieran-rails-reviewer` agents are dispatchable
-- [ ] `claude plugin validate ./dist/plugin` and `claude plugin validate ./dist/driving` pass
+- [ ] `claude plugin validate ./dist/rails` and `claude plugin validate ./dist/driving` pass
 
 **GitHub Copilot CLI:**
 
-- [ ] `copilot plugin install outlaw-skills@outlaw-skills` reports the skills installed
-- [ ] `copilot plugin list` shows `outlaw-skills@outlaw-skills`
+- [ ] `copilot plugin install rails@outlawandy` reports the skills installed
+- [ ] `copilot plugin list` shows `rails@outlawandy`
 - [ ] a skill's bundled resource is present in the installed tree (e.g. `ruby-version/scripts/check.sh`)
 - [ ] `dhh-rails-reviewer` and `kieran-rails-reviewer` agents are selectable
 
@@ -69,6 +69,6 @@ Run after each install to confirm skills and agents are live.
 
 Skill files follow the Anthropic skill spec: YAML frontmatter with `name:` and `description:`, plus optional `metadata:` and `license:`. Agent persona files follow the Claude Code agent spec: `name:`, `description:`, `model:`, `tools:`, `color:`.
 
-### Single distribution
+### One distribution per plugin
 
-There is one distribution (`dist/plugin/`) consumed by both tools, so there is no per-target filtering — every skill and agent ships to both. This is possible because both tools read the same open plugin layout and tolerate each other's extra fields (Claude ignores unrecognized manifest fields; Copilot accepts the `.claude-plugin/plugin.json` location and Claude-style agent tool names). The only tool-specific edge is the hook (see the Copilot hook caveat above).
+The `rails` distribution (`dist/rails/`) is consumed by both tools, so there is no per-target filtering — every skill and agent ships to both. This is possible because both tools read the same open plugin layout and tolerate each other's extra fields (Claude ignores unrecognized manifest fields; Copilot accepts the `.claude-plugin/plugin.json` location and Claude-style agent tool names). The only tool-specific edge is the hook (see the Copilot hook caveat above).

@@ -10,14 +10,14 @@ module OutlawSkills
   # Reads the plugin version from every location that must stay in sync.
   #
   # VERSION is the single source of truth (the build reads it to stamp
-  # dist/plugin/.claude-plugin/plugin.json). Two hand-maintained marketplace
+  # dist/rails/.claude-plugin/plugin.json). Two hand-maintained marketplace
   # manifests each carry two more copies of the version: .claude-plugin/
   # marketplace.json (Claude) and .github/plugin/marketplace.json (Copilot).
   # This reader exposes every copy so a test can assert they all agree (the
   # invariant the release pipeline must preserve).
   class VersionLocations
     # Marketplace manifests, keyed for messages and iteration. Both point their
-    # plugin `source` at the single dist/plugin/ tree.
+    # plugin `source` at a dist/<name>/ tree.
     MARKETPLACES = {
       claude:  [".claude-plugin", "marketplace.json"],
       copilot: [".github", "plugin", "marketplace.json"]
@@ -28,7 +28,7 @@ module OutlawSkills
     end
 
     def version_file_path = File.join(@root, "VERSION")
-    def plugin_json_path  = File.join(@root, "dist", "plugin", ".claude-plugin", "plugin.json")
+    def plugin_json_path  = File.join(@root, "dist", Manifest::NAME, ".claude-plugin", "plugin.json")
 
     # Absolute paths to the two marketplace manifests, keyed as in MARKETPLACES.
     def marketplace_paths
@@ -351,7 +351,8 @@ module OutlawSkills
     def print_refresh(version)
       @out.puts ""
       @out.puts "Released v#{version}. To refresh Claude Code's cached copy:"
-      @out.puts "  /plugin update outlaw-skills@outlaw-skills"
+      marketplace = JSON.parse(File.read(@locations.marketplace_paths[:claude]))
+      marketplace["plugins"].each { |plugin| @out.puts "  /plugin update #{plugin["name"]}@#{marketplace["name"]}" }
       @out.puts "or relaunch your Claude Code session."
     end
 

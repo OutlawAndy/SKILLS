@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.7.0 — 2026-10-05
+
+- The marketplace is now `outlawandy` and the main plugin is now `rails`.
+  Existing installs must remove the `outlaw-skills` marketplace, add it again,
+  and install `rails@outlawandy` (plus `driving@outlawandy` for hands-free mode).
+
 ## 0.6.0 — 2026-10-05
 
 - **driving** is now its own plugin: `claude plugin install driving@outlaw-skills`

@@ -12,9 +12,9 @@ module ReleaseFixtures
     File.write(File.join(dir, "VERSION"), "#{version}\n")
 
     marketplace = {
-      "name" => "outlaw-skills",
+      "name" => "outlawandy",
       "metadata" => { "description" => "x", "version" => version },
-      "plugins" => [{ "name" => "outlaw-skills", "version" => version, "source" => "./dist/plugin" }]
+      "plugins" => [{ "name" => "rails", "version" => version, "source" => "./dist/rails" }]
     }
     # Both marketplace manifests carry their own copy of the version and must stay in sync.
     claude_dir = File.join(dir, ".claude-plugin")
@@ -25,10 +25,10 @@ module ReleaseFixtures
     FileUtils.mkdir_p(gh_dir)
     File.write(File.join(gh_dir, "marketplace.json"), JSON.pretty_generate(marketplace) + "\n")
 
-    dist_plugin_dir = File.join(dir, "dist", "plugin", ".claude-plugin")
+    dist_plugin_dir = File.join(dir, "dist", "rails", ".claude-plugin")
     FileUtils.mkdir_p(dist_plugin_dir)
     File.write(File.join(dist_plugin_dir, "plugin.json"),
-               JSON.pretty_generate({ "name" => "outlaw-skills", "version" => version }) + "\n")
+               JSON.pretty_generate({ "name" => "rails", "version" => version }) + "\n")
   end
 
   # Re-stamps dist plugin.json from VERSION, standing in for the real build so
@@ -36,7 +36,7 @@ module ReleaseFixtures
   def stamping_build(dir)
     lambda do
       version = File.read(File.join(dir, "VERSION")).strip
-      path = File.join(dir, "dist", "plugin", ".claude-plugin", "plugin.json")
+      path = File.join(dir, "dist", "rails", ".claude-plugin", "plugin.json")
       data = JSON.parse(File.read(path))
       data["version"] = version
       File.write(path, JSON.pretty_generate(data) + "\n")
@@ -389,7 +389,7 @@ class ReleaserPublishTest < Minitest::Test
       assert_includes git.calls, [:tag, "v0.1.1", "Release v0.1.1"]
       assert_includes git.calls, [:push, "main", "v0.1.1"]
       assert_includes gh.calls, [:release_create, "v0.1.1"]
-      assert_match(%r{/plugin update outlaw-skills@outlaw-skills}, out.string)
+      assert_match(%r{/plugin update rails@outlawandy}, out.string)
     end
   end
 
