@@ -5,8 +5,9 @@
 # Stop hook that reads the assistant's turn aloud while driving mode is on.
 #
 # Contract with the `driving` skill:
-#   - The skill turns the mode on by creating the flag file; with no flag,
-#     this hook exits immediately and the session is silent.
+#   - The skill turns the mode on by writing its session id into the flag
+#     file; with no flag, or a flag left behind by another session, this
+#     hook exits immediately and the session is silent.
 #   - The assistant ends each message with a `Spoken:` line written for the
 #     ear. Only that line is spoken -- reading raw markdown aloud is
 #     unlistenable, and the whole point of the mode is that the audio was
@@ -28,6 +29,7 @@ command -v jq  >/dev/null 2>&1 || exit 0
 
 input=$(cat)
 session=$(jq -r '.session_id // "unknown"' <<<"$input")
+[ "$(cat "$FLAG")" = "$session" ] || exit 0
 message=$(jq -r '.last_assistant_message // ""' <<<"$input")
 
 # Everything after the last `Spoken:` marker, so a message may mention the

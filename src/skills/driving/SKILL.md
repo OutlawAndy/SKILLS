@@ -23,13 +23,14 @@ thumb-type at a stoplight. Work accordingly.
 ## Turning it on
 
 ```bash
-touch ~/.claude/driving-mode
+echo "${CLAUDE_SESSION_ID}" > ~/.claude/driving-mode
 ```
 
 That flag is the whole switch. The plugin's `Stop` hook checks for it after
 every response and speaks the `Spoken:` line; with no flag the hook exits and
-the session is silent. Confirm in one short line, then follow the protocol
-below until told otherwise.
+the session is silent. The flag holds this session's id, so any other session
+stays silent even if the mode was never turned off. Confirm in one short line,
+then follow the protocol below until told otherwise.
 
 ## Turning it off
 
