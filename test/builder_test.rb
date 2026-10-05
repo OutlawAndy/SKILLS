@@ -75,6 +75,20 @@ class BuilderTest < Minitest::Test
     assert File.executable?(script), "hook script must be executable"
   end
 
+  # driving ships as its own plugin: the skill plus the Stop hook that speaks for it.
+  def test_driving_ships_as_standalone_plugin
+    driving = File.join(ROOT, "dist", "driving")
+    manifest = JSON.parse(File.read(File.join(driving, ".claude-plugin", "plugin.json")))
+    assert_equal "driving", manifest["name"]
+    assert File.exist?(File.join(driving, "skills", "driving", "SKILL.md"))
+    assert JSON.parse(File.read(File.join(driving, "hooks", "hooks.json"))).dig("hooks", "Stop")
+    assert File.executable?(File.join(driving, "hooks", "driving-speak.sh"))
+
+    refute File.exist?(File.join(DIST, "skills", "driving")), "driving must not ship in the main plugin too"
+    refute JSON.parse(File.read(File.join(DIST, "hooks", "hooks.json"))).dig("hooks", "Stop"),
+      "the main plugin must not speak, or installing both plugins speaks every turn twice"
+  end
+
   def test_root_files_copied_to_dist
     %w[AGENTS.md LICENSE].each do |f|
       assert File.exist?(File.join(DIST, f)), "expected #{f} in dist root"

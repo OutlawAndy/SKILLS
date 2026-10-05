@@ -1,0 +1,17 @@
+{
+  "name": "driving",
+  "version": "0.5.0",
+  "description": "Hands-free mode: reads each response aloud and takes decisions one at a time.",
+  "homepage": "https://github.com/OutlawAndy/SKILLS",
+  "repository": "https://github.com/OutlawAndy/SKILLS",
+  "author": {
+    "name": "Andy Cohen",
+    "email": "outlawandy@gmail.com"
+  },
+  "license": "MIT",
+  "keywords": [
+    "voice",
+    "hands-free",
+    "accessibility"
+  ]
+}

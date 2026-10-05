@@ -134,6 +134,17 @@ class ReleaseVersionLocationsTest < Minitest::Test
     end
   end
 
+  def test_detects_drift_in_a_secondary_plugin
+    Dir.mktmpdir do |dir|
+      write_repo_fixture(dir, "1.2.3")
+      mp = File.join(dir, ".claude-plugin", "marketplace.json")
+      data = JSON.parse(File.read(mp))
+      data["plugins"] << { "name" => "driving", "version" => "0.9.9", "source" => "./dist/driving" }
+      File.write(mp, JSON.pretty_generate(data) + "\n")
+      refute OutlawSkills::VersionLocations.new(root: dir).consistent?
+    end
+  end
+
   def test_malformed_marketplace_raises_clear_error
     Dir.mktmpdir do |dir|
       write_repo_fixture(dir, "1.0.0")
@@ -180,6 +191,20 @@ end
 
 class ReleaseMarketplaceSyncTest < Minitest::Test
   include ReleaseFixtures
+
+  def test_updates_every_plugin_entry
+    Dir.mktmpdir do |dir|
+      write_repo_fixture(dir, "0.1.0")
+      path = File.join(dir, ".claude-plugin", "marketplace.json")
+      data = JSON.parse(File.read(path))
+      data["plugins"] << { "name" => "driving", "version" => "0.1.0", "source" => "./dist/driving" }
+      File.write(path, JSON.pretty_generate(data) + "\n")
+
+      OutlawSkills::MarketplaceSync.write(path, "0.2.0")
+
+      assert_equal ["0.2.0"] * 2, JSON.parse(File.read(path))["plugins"].map { |p| p["version"] }
+    end
+  end
 
   def test_updates_both_fields_with_minimal_diff
     Dir.mktmpdir do |dir|

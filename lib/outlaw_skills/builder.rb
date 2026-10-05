@@ -5,18 +5,20 @@ require_relative "targets/plugin"
 module OutlawSkills
   # CLI entry point used by bin/build.
   #
-  # There is a single distribution: dist/plugin/. Both Claude Code and Copilot
-  # CLI read the same plugin layout natively (`.claude-plugin/plugin.json`,
-  # `skills/<name>/SKILL.md`, `agents/*.agent.md`, `hooks/hooks.json`), so one
-  # tree serves both tools and no per-target conversion is performed.
+  # The main distribution is dist/plugin/, built from src/. Each src/plugins/<name>/
+  # is a smaller standalone plugin built to dist/<name>/ for people who want just
+  # that piece. Both Claude Code and Copilot CLI read the same plugin layout
+  # natively (`.claude-plugin/plugin.json`, `skills/<name>/SKILL.md`,
+  # `agents/*.agent.md`, `hooks/hooks.json`), so no per-target conversion is performed.
   module CLI
     def self.run(argv, root: default_root)
       unless argv.empty? || argv == ["plugin"]
-        abort "usage: bin/build  (builds the single dist/plugin/ tree)"
+        abort "usage: bin/build  (builds every plugin tree under dist/)"
       end
 
-      Builder.new(root: root).build
-      $stderr.puts "built: dist/plugin"
+      builder = Builder.new(root: root)
+      builder.build
+      builder.plugins.each { |plugin| $stderr.puts "built: #{plugin.dist_dir.delete_prefix("#{root}/")}" }
     rescue BuildError => e
       abort "build error: #{e.message}"
     end
@@ -37,25 +39,51 @@ module OutlawSkills
 
     def src_root  = File.join(@root, "src")
     def dist_root = File.join(@root, "dist")
-    def hooks_src = File.join(src_root, "hooks")
     def version_file = File.join(@root, "VERSION")
     def version = @version ||= File.read(version_file).strip
 
     def build
-      Targets::Plugin.new(self).build
+      plugins.each { |plugin| Targets::Plugin.new(self, plugin).build }
     end
 
-    # All discovered skills. Validates frontmatter eagerly so malformed
-    # content fails the build with a clear file-named error regardless of
-    # where the failure would otherwise surface.
+    def plugins
+      @plugins ||= [
+        PluginSource.new(name: Manifest::NAME, src_dir: src_root,
+                         dist_dir: File.join(dist_root, "plugin"), root_files: %w[AGENTS.md LICENSE]),
+        *Dir.glob(File.join(src_root, "plugins", "*")).select { |p| File.directory?(p) }.sort.map do |path|
+          name = File.basename(path)
+          PluginSource.new(name: name, src_dir: path, dist_dir: File.join(dist_root, name), root_files: %w[LICENSE])
+        end
+      ]
+    end
+
+    def skills = plugins.flat_map(&:skills)
+  end
+
+  # One plugin's canonical source: skills/, agents/, and hooks/ under src_dir.
+  class PluginSource
+    attr_reader :name, :src_dir, :dist_dir, :root_files
+
+    def initialize(name:, src_dir:, dist_dir:, root_files:)
+      @name = name
+      @src_dir = src_dir
+      @dist_dir = dist_dir
+      @root_files = root_files
+    end
+
+    def hooks_src = File.join(src_dir, "hooks")
+
+    # Validates frontmatter eagerly so malformed content fails the build with
+    # a clear file-named error regardless of where the failure would otherwise
+    # surface.
     def skills
-      @skills ||= Dir.glob(File.join(src_root, "skills", "*")).select { |p| File.directory?(p) }.sort.map do |path|
+      @skills ||= Dir.glob(File.join(src_dir, "skills", "*")).select { |p| File.directory?(p) }.sort.map do |path|
         Skill.new(path)
       end
     end
 
     def agents
-      @agents ||= Dir.glob(File.join(src_root, "agents", "*.agent.md")).sort.map { |p| Agent.new(p) }
+      @agents ||= Dir.glob(File.join(src_dir, "agents", "*.agent.md")).sort.map { |p| Agent.new(p) }
     end
   end
 

@@ -63,13 +63,19 @@ module OutlawSkills
       version
     end
 
-    # Every version string, keyed by location. Two entries per marketplace
-    # (metadata + plugin) plus VERSION and the built plugin.json.
+    # Every version string, keyed by location: VERSION, each built plugin.json,
+    # and each marketplace's metadata plus every plugin entry it lists.
     def all
       result = { version_file: version_file, plugin_json: plugin_json_version }
+      Dir.glob(File.join(@root, "dist", "*", ".claude-plugin", "plugin.json")).sort.each do |path|
+        result[:"#{path.split("/")[-3]}_plugin_json"] = JSON.parse(File.read(path))["version"]
+      end
       marketplace_paths.each do |key, path|
         result[:"#{key}_marketplace_metadata"] = marketplace_metadata_version(path)
         result[:"#{key}_marketplace_plugin"]   = marketplace_plugin_version(path)
+        read_marketplace(path)["plugins"].each do |plugin|
+          result[:"#{key}_marketplace_#{plugin["name"]}"] = plugin["version"]
+        end
       end
       result
     end
@@ -110,7 +116,7 @@ module OutlawSkills
     end
   end
 
-  # Writes the new version into both marketplace.json version fields while
+  # Writes the new version into a marketplace.json's metadata and every plugin entry while
   # preserving the file's exact formatting (key order + 2-space pretty-print),
   # so the only diff is the version lines.
   module MarketplaceSync
@@ -119,7 +125,7 @@ module OutlawSkills
     def write(path, version)
       data = JSON.parse(File.read(path))
       data.fetch("metadata")["version"] = version
-      data.fetch("plugins")[0]["version"] = version
+      data.fetch("plugins").each { |plugin| plugin["version"] = version }
       File.write(path, JSON.pretty_generate(data) + "\n")
     end
   end

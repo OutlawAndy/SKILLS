@@ -3,8 +3,8 @@ require "json"
 
 module OutlawSkills
   module Targets
-    # Emits the single dist/plugin/ tree consumed natively by both Claude Code
-    # and Copilot CLI:
+    # Emits one plugin tree (dist/plugin/ or dist/<name>/) consumed natively by
+    # both Claude Code and Copilot CLI:
     #
     #   .claude-plugin/plugin.json   manifest (the one location both tools read)
     #   skills/<name>/SKILL.md       verbatim skill directory copies (+ bundled files)
@@ -15,13 +15,14 @@ module OutlawSkills
     #   hooks/hooks.json + scripts   plugin-native hooks. Claude-format; Claude-effective.
     #                                Copilot reads the same tree but its plugin
     #                                preToolUse support differs (see plan RK2).
-    #   AGENTS.md, LICENSE           copied verbatim from repo root
+    #   AGENTS.md, LICENSE           copied verbatim from repo root (per plugin)
     #
     # No per-tool conversion is performed — one tree, copied verbatim.
     class Plugin
-      def initialize(builder)
+      def initialize(builder, source)
         @builder = builder
-        @dist_dir = File.join(builder.dist_root, "plugin")
+        @source = source
+        @dist_dir = source.dist_dir
       end
 
       def build
@@ -39,7 +40,7 @@ module OutlawSkills
       def write_manifest
         plugin_dir = File.join(@dist_dir, ".claude-plugin")
         FileUtils.mkdir_p(plugin_dir)
-        manifest = Manifest.build(version: @builder.version)
+        manifest = Manifest.build(version: @builder.version, name: @source.name)
         File.write(
           File.join(plugin_dir, "plugin.json"),
           JSON.pretty_generate(manifest) + "\n"
@@ -47,7 +48,7 @@ module OutlawSkills
       end
 
       def copy_skills
-        skills = @builder.skills
+        skills = @source.skills
         return if skills.empty?
         dest = File.join(@dist_dir, "skills")
         FileUtils.mkdir_p(dest)
@@ -55,7 +56,7 @@ module OutlawSkills
       end
 
       def copy_agents
-        agents = @builder.agents
+        agents = @source.agents
         return if agents.empty?
         dest = File.join(@dist_dir, "agents")
         FileUtils.mkdir_p(dest)
@@ -63,7 +64,7 @@ module OutlawSkills
       end
 
       def copy_hooks
-        src = @builder.hooks_src
+        src = @source.hooks_src
         return unless File.directory?(src)
         dest = File.join(@dist_dir, "hooks")
         FileUtils.mkdir_p(dest)
@@ -73,7 +74,7 @@ module OutlawSkills
       end
 
       def copy_root_files
-        %w[AGENTS.md LICENSE].each do |name|
+        @source.root_files.each do |name|
           src = File.join(@builder.root, name)
           FileUtils.cp(src, File.join(@dist_dir, name)) if File.exist?(src)
         end

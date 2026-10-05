@@ -1,6 +1,6 @@
 # outlaw-skills
 
-A personal cross-tool layer of AI coding-agent skills and reviewer personas. Canonical source lives in `src/`; `bin/build` transpiles it into a single plugin distribution under `dist/plugin/` that both Claude Code and GitHub Copilot CLI consume natively.
+A personal cross-tool layer of AI coding-agent skills and reviewer personas. Canonical source lives in `src/`; `bin/build` transpiles it into the main plugin under `dist/plugin/`, plus one standalone plugin per `src/plugins/<name>/` under `dist/<name>/` (currently `driving`), all consumed natively by both Claude Code and GitHub Copilot CLI.
 
 ## Project Layout
 
@@ -10,15 +10,17 @@ outlaw-skills/
     skills/            # skill directories with SKILL.md + optional assets
     agents/            # reviewer/persona agents as plain markdown
     hooks/             # plugin hooks: hooks.json + scripts (e.g. rails-gate.sh)
+    plugins/<name>/    # standalone plugins (skills/, hooks/), built to dist/<name>/
   bin/
     build              # Ruby script that produces dist/plugin/
     release            # Ruby script that bumps the version, rebuilds, tags, and publishes a release
   lib/outlaw_skills/   # build logic
   dist/                # generated plugin distribution (checked in)
-    plugin/            # the single tree: .claude-plugin/plugin.json, skills/,
+    plugin/            # the main tree: .claude-plugin/plugin.json, skills/,
                        #   agents/, hooks/, AGENTS.md, LICENSE — read natively by
                        #   both Claude Code and Copilot CLI
-  .claude-plugin/marketplace.json   # Claude marketplace, source -> ./dist/plugin
+    driving/           # standalone driving plugin: skill + Stop hook
+  .claude-plugin/marketplace.json   # Claude marketplace: outlaw-skills -> ./dist/plugin, driving -> ./dist/driving
   .github/plugin/marketplace.json   # Copilot marketplace, source -> ./dist/plugin
   VERSION              # single source of version truth (semver; bump via bin/release)
   LICENSE              # MIT
@@ -39,7 +41,7 @@ outlaw-skills/
 
 **Skills** ship as the open Agent Skills (`SKILL.md`) format Copilot reads natively — bundled scripts and resources intact, auto-activated by description (and invocable as `/<name>`). **Agents** are copied verbatim with Claude-native `tools:` (`Read, Grep, Glob, Bash`); Copilot maps these case-insensitively (`Read`→`read`, `Bash`→`execute`) and a non-empty `tools:` list *restricts* rather than grants, so the read-only reviewer personas stay read-only there.
 
-**Hook caveat:** the plugin ships a Claude-format `hooks/hooks.json` — the rails-gate `PreToolUse` gate (`hooks/rails-gate.sh`) and the driving-mode `Stop` hook (`hooks/driving-speak.sh`, inert unless `~/.claude/driving-mode` exists). Both are effective in Claude Code. Copilot loads the plugin cleanly with it present, but Copilot's plugin-level `preToolUse` support differs (camelCase events, a different entry shape, and an open upstream gap), so the gate is Claude-only in practice.
+**Hook caveat:** the main plugin ships a Claude-format `hooks/hooks.json` with the rails-gate `PreToolUse` gate (`hooks/rails-gate.sh`); the `driving` plugin ships its own with the `Stop` hook (`hooks/driving-speak.sh`, inert unless `~/.claude/driving-mode` holds the current session id). Both are effective in Claude Code; `driving` is listed in the Claude marketplace only. Copilot loads the plugin cleanly with it present, but Copilot's plugin-level `preToolUse` support differs (camelCase events, a different entry shape, and an open upstream gap), so the gate is Claude-only in practice.
 
 ## Verification Checklist
 
@@ -50,7 +52,7 @@ Run after each install to confirm skills and agents are live.
 - [ ] `/find-skills`, `/controller-patterns`, `/ruby-version`, `/brave-breakdown`, `/routing-patterns`, `/skill-audit`, `/md-audit`, `/driving` each invoke successfully
 - [ ] `/driving` speaks a response, `/driving off` restores silence
 - [ ] `dhh-rails-reviewer` and `kieran-rails-reviewer` agents are dispatchable
-- [ ] `claude plugin validate ./dist/plugin` passes
+- [ ] `claude plugin validate ./dist/plugin` and `claude plugin validate ./dist/driving` pass
 
 **GitHub Copilot CLI:**
 

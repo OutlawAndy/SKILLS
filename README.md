@@ -8,6 +8,7 @@ A multi-harness skill pipeline & my personal customization layer atop the growin
   ```sh
   claude plugin marketplace add OutlawAndy/SKILLS
   claude plugin install outlaw-skills@outlaw-skills
+  claude plugin install driving@outlaw-skills   # hands-free mode, also installable on its own
   ```
 - **GitHub Copilot:**
   ```sh
@@ -78,24 +79,26 @@ A multi-harness skill pipeline & my personal customization layer atop the growin
 
   find-skills      — no internal deps (discovery/install helper)
   brave-breakdown  — no internal deps (BRAVE ticket breakdown)
-  driving          — hands-free mode (skill + Stop hook, see below)
+  driving          — hands-free mode, its own `driving` plugin (skill + Stop hook, see below)
 
 ### DRIVING MODE
 
     /driving                        /driving off
         │                                │
         ▼                                ▼
-   touch ~/.claude/driving-mode   rm ~/.claude/driving-mode
+   session id → flag file         rm ~/.claude/driving-mode
         │                                │
         │  flag read at runtime by       │
         ▼                                ▼
     ┌──────────────────────────────────────────┐
     │  Stop hook: hooks/driving-speak.sh       │
-    │  no flag → exit 0, session stays silent  │
-    │  flag    → say(the `Spoken:` line)       │
+    │  no flag, or another session's → silent  │
+    │  this session's flag → say(`Spoken:`)    │
     └──────────────────────────────────────────┘
 
-`/driving` is for working while you can't look at the screen. It does two
+`/driving` is for working while you can't look at the screen. It ships as its own
+`driving` plugin in this marketplace, so it can be installed without the rest of
+the suite. It does two
 things that are deliberately separate:
 
 - **The hook speaks.** A `Stop` hook fires after every response and reads the
@@ -120,8 +123,8 @@ Tuning, if the default voice is wrong for the car:
 | `OUTLAW_DRIVING_VOICE` | system voice | any name from `say -v '?'` |
 | `OUTLAW_DRIVING_FLAG` | `~/.claude/driving-mode` | flag file path |
 
-Caveats worth knowing: the flag is global, so every Claude Code session on the
-machine speaks while it exists; `say` is macOS-only and the hook exits quietly
+Caveats worth knowing: the flag holds the id of the session that turned the mode
+on, so only that session speaks and a forgotten flag goes quiet with it; `say` is macOS-only and the hook exits quietly
 elsewhere; and each response cuts off the previous utterance for that session
 rather than queueing behind it.
 
@@ -132,7 +135,7 @@ rather than queueing behind it.
 - *External delegation*: **work**→[*ce-work*], **plan**→[*ce-plan*] (engines they wrap), plus [**layered-rails**] and [**ce-dhh-rails-style**] in the dispatch set.
 - *Maintenance chain*: **vet** (opinion vetting) → **skill-audit** (coherence) → **md-audit** (mechanical), with **skill-diff** as the upstream-comparison sibling. `vet` is the entry point when adopting a skill; `skill-audit` can also be invoked standalone for coherence-only audits.
 - **find-skills** and **brave-breakdown** stand alone — no cross-skill wiring.
-- **driving** stands alone too, but is the only skill paired with a hook: it owns the flag file that `hooks/driving-speak.sh` reads. Neither half does anything useful without the other.
+- **driving** stands alone too, but is the only skill paired with a hook: it owns the flag file that `hooks/driving-speak.sh` reads, which is why the two ship together as the `driving` plugin. Neither half does anything useful without the other.
 
 ## Local Development & Building from Source
 
@@ -141,7 +144,7 @@ The `dist/plugin/` directory holds a prebuilt plugin consumed by both Claude Cod
 All changes should be localized within the `src/` directory **only**.  After making a change, rebuild the plugin with the `bin/build` script.
 
 ```sh
-bin/build   # builds the single dist/plugin/ tree
+bin/build   # builds dist/plugin/ plus dist/<name>/ for each src/plugins/<name>/
 ```
 
 > [!IMPORTANT]
