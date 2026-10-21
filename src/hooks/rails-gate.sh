@@ -25,8 +25,7 @@
 #
 # Dependencies: bash, jq.
 #
-# Source of truth for trigger patterns: this file. Edit both this script
-# and the Phase 3 table in src/skills/work/SKILL.md together.
+# Trigger patterns live in rails-skills.sh, shared with pr-review-gate.sh.
 
 set -euo pipefail
 
@@ -86,27 +85,8 @@ rel_path="${abs_path#$project_root/}"
 
 # --- Match against Rails triggers ----------------------------------------
 
-skill=""
-category=""
-
-case "$rel_path" in
-  app/controllers/*)
-    skill="controller-patterns"
-    category="controller"
-    ;;
-  config/routes.rb|config/routes/*)
-    skill="routing-patterns"
-    category="routes"
-    ;;
-  app/models/*|app/services/*|app/policies/*|app/forms/*|app/queries/*)
-    skill="layered-rails"
-    category="model-service-policy"
-    ;;
-  app/views/*|app/components/*)
-    skill="frontend-patterns"
-    category="view-component"
-    ;;
-esac
+source "$(dirname "$0")/rails-skills.sh"
+read -r skill category <<<"$(rails_skill_for "$rel_path")" || true
 
 [ -z "$skill" ] && exit 0
 
